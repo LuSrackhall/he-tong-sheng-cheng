@@ -10,6 +10,9 @@ const pageSize = 20
 const showModal = ref(false)
 const editing = ref<Tenant | null>(null)
 const form = ref({ name: '', phone: '', idCard: '' })
+const saving = ref(false)
+const submitLock = ref(false)
+const errorMessage = ref('')
 
 async function fetchTenants() {
   const { data } = await tenantApi.list({ search: search.value, offset: page.value * pageSize, limit: pageSize })
@@ -19,14 +22,25 @@ async function fetchTenants() {
 function openCreate() { editing.value = null; form.value = { name: '', phone: '', idCard: '' }; showModal.value = true }
 function openEdit(t: Tenant) { editing.value = t; form.value = { name: t.name, phone: t.phone || '', idCard: t.idCard || '' }; showModal.value = true }
 async function save() {
+  if (submitLock.value) return
   if (!form.value.name) return
-  if (editing.value) {
-    await tenantApi.update(editing.value.id, form.value)
-  } else {
-    await tenantApi.create(form.value)
+  submitLock.value = true
+  saving.value = true
+  try {
+    if (editing.value) {
+      await tenantApi.update(editing.value.id, form.value)
+    } else {
+      await tenantApi.create(form.value)
+    }
+    showModal.value = false
+    errorMessage.value = ''
+    fetchTenants()
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.error || '保存失败，请重试'
+  } finally {
+    saving.value = false
+    submitLock.value = false
   }
-  showModal.value = false
-  fetchTenants()
 }
 onMounted(fetchTenants)
 </script>
@@ -59,9 +73,10 @@ onMounted(fetchTenants)
         <div class="form-group"><label class="label">姓名</label><input class="input" v-model="form.name" /></div>
         <div class="form-group"><label class="label">电话</label><input class="input" v-model="form.phone" /></div>
         <div class="form-group"><label class="label">身份证号</label><input class="input" v-model="form.idCard" /></div>
+        <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="btn btn-secondary" @click="showModal = false">取消</button>
-          <button class="btn btn-primary" @click="save">保存</button>
+          <button class="btn btn-primary" :disabled="saving" @click="save">{{ saving ? '保存中...' : '保存' }}</button>
         </div>
       </div>
     </div>

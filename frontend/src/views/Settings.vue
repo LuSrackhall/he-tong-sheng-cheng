@@ -14,6 +14,8 @@ const templates = ref<Template[]>([])
 const showUpload = ref(false)
 const form = ref({ name: '', filePath: '' })
 const mapping = ref<Record<number, string>>({})
+const saving = ref(false)
+const submitLock = ref(false)
 const error = ref('')
 
 async function fetchTemplates() {
@@ -32,18 +34,25 @@ async function fetchTemplates() {
 }
 
 async function createTemplate() {
+  if (submitLock.value) return
   error.value = ''
   if (!form.value.name || !form.value.filePath) {
     error.value = '请填写模板名称和文件路径'
     return
   }
+  submitLock.value = true
+  saving.value = true
   try {
     await api.post('/templates', form.value)
     showUpload.value = false
+    error.value = ''
     form.value = { name: '', filePath: '' }
     fetchTemplates()
   } catch (e: any) {
     error.value = e.response?.data?.error || '创建失败'
+  } finally {
+    saving.value = false
+    submitLock.value = false
   }
 }
 
@@ -98,7 +107,7 @@ onMounted(fetchTemplates)
         <div style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-bottom: 12px;">请先将 .docx 模板文件放置到服务器的 templates/ 目录下，然后在此登记。</div>
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="btn btn-secondary" @click="showUpload = false">取消</button>
-          <button class="btn btn-primary" @click="createTemplate">登记模板</button>
+          <button class="btn btn-primary" :disabled="saving" @click="createTemplate">{{ saving ? '登记中...' : '登记模板' }}</button>
         </div>
       </div>
     </div>

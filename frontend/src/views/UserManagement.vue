@@ -15,6 +15,8 @@ interface User {
 const users = ref<User[]>([])
 const showCreate = ref(false)
 const form = ref({ username: '', password: '', role: 'operator' })
+const saving = ref(false)
+const submitLock = ref(false)
 const error = ref('')
 
 async function fetchUsers() {
@@ -27,18 +29,25 @@ async function fetchUsers() {
 }
 
 async function createUser() {
+  if (submitLock.value) return
   error.value = ''
   if (!form.value.username || !form.value.password) {
     error.value = '请填写用户名和密码'
     return
   }
+  submitLock.value = true
+  saving.value = true
   try {
     await authApi.createUser(form.value)
     showCreate.value = false
+    error.value = ''
     form.value = { username: '', password: '', role: 'operator' }
     fetchUsers()
   } catch (e: any) {
     error.value = e.response?.data?.error || '创建失败'
+  } finally {
+    saving.value = false
+    submitLock.value = false
   }
 }
 
@@ -105,7 +114,7 @@ onMounted(fetchUsers)
         </div>
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="btn btn-secondary" @click="showCreate = false">取消</button>
-          <button class="btn btn-primary" @click="createUser">创建</button>
+          <button class="btn btn-primary" :disabled="saving" @click="createUser">{{ saving ? '创建中...' : '创建' }}</button>
         </div>
       </div>
     </div>

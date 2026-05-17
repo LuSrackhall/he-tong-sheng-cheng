@@ -13,6 +13,9 @@ const detailContract = ref<Contract | null>(null)
 const showEditModal = ref(false)
 const editing = ref<Contract | null>(null)
 const form = ref({ startDate: '', endDate: '', monthlyRent: 0, totalReceivable: 0, deposit: 0, notes: '' })
+const saving = ref(false)
+const submitLock = ref(false)
+const errorMessage = ref('')
 
 async function fetchContracts() {
   const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }
@@ -35,10 +38,21 @@ function openEdit(c: Contract) {
   showEditModal.value = true
 }
 async function save() {
+  if (submitLock.value) return
   if (!editing.value || !form.value.startDate || !form.value.endDate) return
-  await contractApi.update(editing.value.id, form.value)
-  showEditModal.value = false
-  fetchContracts()
+  submitLock.value = true
+  saving.value = true
+  try {
+    await contractApi.update(editing.value.id, form.value)
+    showEditModal.value = false
+    errorMessage.value = ''
+    fetchContracts()
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.error || '保存失败，请重试'
+  } finally {
+    saving.value = false
+    submitLock.value = false
+  }
 }
 
 onMounted(fetchContracts)
@@ -145,9 +159,10 @@ onMounted(fetchContracts)
         <div class="form-group"><label class="label">应收总额</label><input class="input" type="number" v-model="form.totalReceivable" /></div>
         <div class="form-group"><label class="label">押金</label><input class="input" type="number" v-model="form.deposit" /></div>
         <div class="form-group"><label class="label">备注</label><input class="input" v-model="form.notes" /></div>
+        <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="btn btn-secondary" @click="showEditModal = false">取消</button>
-          <button class="btn btn-primary" @click="save">保存</button>
+          <button class="btn btn-primary" :disabled="saving" @click="save">{{ saving ? '保存中...' : '保存' }}</button>
         </div>
       </div>
     </div>

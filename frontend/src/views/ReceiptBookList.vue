@@ -18,6 +18,9 @@ const page = ref(0)
 const pageSize = 20
 const showCreate = ref(false)
 const form = ref({ prefix: '', startNum: 1, totalPages: 50 })
+const saving = ref(false)
+const submitLock = ref(false)
+const errorMessage = ref('')
 
 async function fetchBooks() {
   const { data } = await api.get('/receipt-books', { params: { offset: page.value * pageSize, limit: pageSize } })
@@ -25,11 +28,22 @@ async function fetchBooks() {
   total.value = data.total
 }
 async function createBook() {
+  if (submitLock.value) return
   if (!form.value.prefix || form.value.totalPages <= 0) return
-  await api.post('/receipt-books', form.value)
-  showCreate.value = false
-  form.value = { prefix: '', startNum: 1, totalPages: 50 }
-  fetchBooks()
+  submitLock.value = true
+  saving.value = true
+  try {
+    await api.post('/receipt-books', form.value)
+    showCreate.value = false
+    errorMessage.value = ''
+    form.value = { prefix: '', startNum: 1, totalPages: 50 }
+    fetchBooks()
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.error || '创建失败，请重试'
+  } finally {
+    saving.value = false
+    submitLock.value = false
+  }
 }
 
 onMounted(fetchBooks)
@@ -84,9 +98,10 @@ onMounted(fetchBooks)
         <div class="form-group"><label class="label">前缀（如 "SK-2026-"）</label><input class="input" v-model="form.prefix" placeholder="SK-2026-" /></div>
         <div class="form-group"><label class="label">起始编号</label><input class="input" type="number" v-model="form.startNum" /></div>
         <div class="form-group"><label class="label">总页数</label><input class="input" type="number" v-model="form.totalPages" /></div>
+        <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="btn btn-secondary" @click="showCreate = false">取消</button>
-          <button class="btn btn-primary" @click="createBook">创建</button>
+          <button class="btn btn-primary" :disabled="saving" @click="createBook">{{ saving ? '创建中...' : '创建' }}</button>
         </div>
       </div>
     </div>
