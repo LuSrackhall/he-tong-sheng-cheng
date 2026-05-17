@@ -67,6 +67,18 @@ func (h *ContractHandler) Create(c *gin.Context) {
 		return
 	}
 
+	active, err := h.repo.ListActive()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing contracts"})
+		return
+	}
+	for _, ct := range active {
+		if ct.AssetID == req.AssetID && ct.TenantID == req.TenantID && startDate.Before(ct.EndDate) && endDate.After(ct.StartDate) {
+			c.JSON(http.StatusConflict, gin.H{"error": "该资产与租户在此时间段已有合同"})
+			return
+		}
+	}
+
 	if req.TotalReceivable <= 0 {
 		// auto-calculate
 		wholeMonths := int(endDate.Sub(startDate).Hours()/24) / 30

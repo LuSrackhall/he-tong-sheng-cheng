@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { assetApi, tenantApi, contractApi, type Asset, type Tenant, type Contract } from '../api'
 
 const step = ref(1)
@@ -15,7 +16,22 @@ const newAsset = ref({ name: '', assetType: 'shop', description: '' })
 const newTenant = ref({ name: '', phone: '', idCard: '' })
 const contract = ref({ startDate: '', endDate: '', monthlyRent: 0, totalReceivable: 0, deposit: 0, notes: '' })
 const saving = ref(false)
+const submitLock = ref(false)
 const createdContract = ref<Contract | null>(null)
+
+const hasUnsavedChanges = computed(() =>
+  selectedAsset.value !== null || selectedTenant.value !== null ||
+  contract.value.startDate !== '' || contract.value.endDate !== '' ||
+  contract.value.monthlyRent > 0
+)
+
+onBeforeRouteLeave((_to, _from, next) => {
+  if (hasUnsavedChanges.value && step.value !== 4) {
+    const confirmed = window.confirm('有未保存的合同数据，确定要离开吗？')
+    if (!confirmed) return next(false)
+  }
+  next()
+})
 
 async function searchAssets() {
   if (assetSearch.value.length < 1) { assets.value = []; return }
@@ -42,8 +58,10 @@ async function createTenant() {
   searchTenants()
 }
 async function createContract() {
+  if (submitLock.value) return
   if (!selectedAsset.value || !selectedTenant.value) return
   if (!contract.value.startDate || !contract.value.endDate || !contract.value.monthlyRent) return
+  submitLock.value = true
   saving.value = true
   try {
     const { data } = await contractApi.create({
@@ -60,6 +78,7 @@ async function createContract() {
     step.value = 4
   } finally {
     saving.value = false
+    submitLock.value = false
   }
 }
 function reset() {
