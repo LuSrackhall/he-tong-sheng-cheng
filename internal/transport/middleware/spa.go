@@ -2,15 +2,15 @@ package middleware
 
 import (
 	"io/fs"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 func SPAFallbackEmbed(distFS fs.FS) gin.HandlerFunc {
-	fileServer := http.FileServer(http.FS(distFS))
-
 	return func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/api") {
 			c.Next()
@@ -22,14 +22,22 @@ func SPAFallbackEmbed(distFS fs.FS) gin.HandlerFunc {
 			path = "index.html"
 		}
 
-		// Serve index.html for any path that doesn't match a real file
-		if _, err := fs.Stat(distFS, path); err != nil {
+		data, err := fs.ReadFile(distFS, path)
+		if err != nil {
+			data, err = fs.ReadFile(distFS, "index.html")
+			if err != nil {
+				c.AbortWithStatus(http.StatusNotFound)
+				return
+			}
 			path = "index.html"
 		}
 
-		// Use direct path, not c.Request.URL.Path rewrite which confuses http.FileServer
-		c.Request.URL.Path = "/" + path
-		fileServer.ServeHTTP(c.Writer, c.Request)
+		ext := filepath.Ext(path)
+		ct := mime.TypeByExtension(ext)
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+		c.Data(http.StatusOK, ct, data)
 		c.Abort()
 	}
 }
