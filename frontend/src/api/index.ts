@@ -1,0 +1,65 @@
+import axios from 'axios'
+
+const api = axios.create({ baseURL: '/api' })
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token')
+      window.location.hash = '#/login'
+    }
+    return Promise.reject(err)
+  },
+)
+
+export default api
+
+export interface Asset { id: number; name: string; assetType: string; description?: string; status: string; extraFields?: string; createdAt: string }
+export interface Tenant { id: number; name: string; idCard?: string; phone?: string; idCardImage?: string; extraFields?: string; createdAt: string }
+export interface Contract { id: number; assetId: number; tenantId: number; asset?: Asset; tenant?: Tenant; startDate: string; endDate: string; monthlyRent: number; totalReceivable: number; totalReceived: number; deposit: number; status: string; notes?: string; createdAt: string }
+export interface Payment { id: number; contractId: number; amount: number; paidAt: string; notes?: string }
+
+export const assetApi = {
+  list: (params?: any) => api.get<{ data: Asset[]; total: number }>('/assets', { params }),
+  create: (data: Partial<Asset>) => api.post<Asset>('/assets', data),
+  get: (id: number) => api.get<Asset>(`/assets/${id}`),
+  update: (id: number, data: Partial<Asset>) => api.patch<Asset>(`/assets/${id}`, data),
+}
+
+export const tenantApi = {
+  list: (params?: any) => api.get<{ data: Tenant[]; total: number }>('/tenants', { params }),
+  create: (data: Partial<Tenant>) => api.post<Tenant>('/tenants', data),
+  get: (id: number) => api.get<Tenant>(`/tenants/${id}`),
+  update: (id: number, data: Partial<Tenant>) => api.patch<Tenant>(`/tenants/${id}`, data),
+}
+
+export const contractApi = {
+  list: (params?: any) => api.get<{ data: Contract[]; total: number }>('/contracts', { params }),
+  create: (data: Partial<Contract>) => api.post<Contract>('/contracts', data),
+  get: (id: number) => api.get<Contract>(`/contracts/${id}`),
+  update: (id: number, data: Partial<Contract>) => api.patch<Contract>(`/contracts/${id}`, data),
+}
+
+export const paymentApi = {
+  list: (contractId: number) => api.get<Payment[]>(`/contracts/${contractId}/payments`),
+  create: (contractId: number, data: { amount: number; paidAt?: string; notes?: string }) =>
+    api.post<{ payment: Payment; shortfall: number }>(`/contracts/${contractId}/payments`, data),
+}
+
+export const authApi = {
+  login: (username: string, password: string) =>
+    api.post<{ token: string; user: { id: number; username: string; role: string } }>('/auth/login', { username, password }),
+  me: () => api.get('/auth/me'),
+  listUsers: () => api.get('/admin/users'),
+  createUser: (data: { username: string; password: string; role: string }) => api.post('/admin/users', data),
+  deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
+}
