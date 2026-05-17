@@ -22,12 +22,13 @@ func SPAFallbackEmbed(distFS fs.FS) gin.HandlerFunc {
 			path = "index.html"
 		}
 
+		// Serve index.html for any path that doesn't match a real file
 		if _, err := fs.Stat(distFS, path); err != nil {
-			c.Request.URL.Path = "/index.html"
-		} else {
-			c.Request.URL.Path = "/" + path
+			path = "index.html"
 		}
 
+		// Use direct path, not c.Request.URL.Path rewrite which confuses http.FileServer
+		c.Request.URL.Path = "/" + path
 		fileServer.ServeHTTP(c.Writer, c.Request)
 		c.Abort()
 	}

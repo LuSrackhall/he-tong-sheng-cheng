@@ -34,7 +34,8 @@ func main() {
 	receiptBookH := handler.NewReceiptBookHandler(deps.ReceiptBookRepo)
 	arrearsH := handler.NewArrearsHandler(deps.ContractRepo)
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
 
 	api := r.Group("/api")
 	{
