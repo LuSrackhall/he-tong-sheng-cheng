@@ -14,6 +14,8 @@ const paymentNotes = ref('')
 const shortfall = ref(0)
 const payments = ref<Payment[]>([])
 const saving = ref(false)
+const errorMessage = ref('')
+const submitLock = ref(false)
 
 async function fetchContracts() {
   const { data } = await contractApi.list({ search: search.value, offset: page.value * pageSize, limit: pageSize })
@@ -30,7 +32,9 @@ async function openPayModal(c: Contract) {
   payments.value = pmts
 }
 async function recordPayment() {
+  if (submitLock.value) return
   if (!selectedContract.value || paymentAmount.value <= 0) return
+  submitLock.value = true
   saving.value = true
   try {
     const { data } = await paymentApi.create(selectedContract.value.id, { amount: paymentAmount.value, notes: paymentNotes.value })
@@ -40,8 +44,11 @@ async function recordPayment() {
     const { data: pmts } = await paymentApi.list(selectedContract.value.id)
     payments.value = pmts
     fetchContracts()
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.error || '收款失败，请重试'
   } finally {
     saving.value = false
+    submitLock.value = false
   }
 }
 
@@ -113,6 +120,7 @@ onMounted(fetchContracts)
 
         <div class="form-group"><label class="label">收款金额</label><input class="input" type="number" v-model="paymentAmount" placeholder="输入收款金额" /></div>
         <div class="form-group"><label class="label">备注</label><input class="input" v-model="paymentNotes" placeholder="备注信息" /></div>
+        <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
         <button class="btn btn-primary" style="width: 100%; margin-bottom: 16px;" :disabled="saving || paymentAmount <= 0" @click="recordPayment">
           {{ saving ? '记录中...' : '确认收款' }}
         </button>

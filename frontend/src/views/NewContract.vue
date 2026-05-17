@@ -17,6 +17,7 @@ const newTenant = ref({ name: '', phone: '', idCard: '' })
 const contract = ref({ startDate: '', endDate: '', monthlyRent: 0, totalReceivable: 0, deposit: 0, notes: '' })
 const saving = ref(false)
 const submitLock = ref(false)
+const errorMessage = ref('')
 const createdContract = ref<Contract | null>(null)
 
 const hasUnsavedChanges = computed(() =>
@@ -75,7 +76,10 @@ async function createContract() {
       notes: contract.value.notes,
     })
     createdContract.value = data
+    errorMessage.value = ''
     step.value = 4
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.error || '合同创建失败，请重试'
   } finally {
     saving.value = false
     submitLock.value = false
@@ -181,6 +185,7 @@ function reset() {
       <div class="form-group"><label class="label">应收总额（留空自动计算）</label><input class="input" type="number" v-model="contract.totalReceivable" placeholder="自动计算：整月×月租+零天×日租" /></div>
       <div class="form-group"><label class="label">押金</label><input class="input" type="number" v-model="contract.deposit" /></div>
       <div class="form-group"><label class="label">备注</label><input class="input" v-model="contract.notes" /></div>
+      <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
       <div style="display: flex; gap: 8px;">
         <button class="btn btn-secondary" @click="step = 2">← 返回</button>
         <button class="btn btn-primary" :disabled="saving" @click="createContract">{{ saving ? '创建中...' : '创建合同' }}</button>
