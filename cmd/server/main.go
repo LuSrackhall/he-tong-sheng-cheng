@@ -35,6 +35,14 @@ func main() {
 	arrearsH := handler.NewArrearsHandler(deps.ContractRepo)
 
 	r := gin.New()
+
+	distSub, err := fs.Sub(distFS, "dist")
+	if err != nil {
+		log.Fatalf("Failed to open embedded dist: %v", err)
+	}
+
+	// SPA middleware runs before routing to avoid gin's RedirectTrailingSlash
+	r.Use(middleware.SPAFallbackEmbed(distSub))
 	r.Use(gin.Logger(), gin.Recovery())
 
 	api := r.Group("/api")
@@ -82,12 +90,6 @@ func main() {
 			admin.DELETE("/users/:id", authH.DeleteUser)
 		}
 	}
-
-	distSub, err := fs.Sub(distFS, "dist")
-	if err != nil {
-		log.Fatalf("Failed to open embedded dist: %v", err)
-	}
-	r.NoRoute(middleware.SPAFallbackEmbed(distSub))
 
 	log.Printf("Server starting on :%s\n", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
