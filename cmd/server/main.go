@@ -86,7 +86,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to open embedded dist: %v", err)
 	}
-	r.Use(middleware.SPAFallbackEmbed(distSub))
+	r.NoRoute(middleware.SPAFallbackEmbed(distSub))
 
 	log.Printf("Server starting on :%s\n", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
