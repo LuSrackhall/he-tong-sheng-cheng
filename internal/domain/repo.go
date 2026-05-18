@@ -51,6 +51,8 @@ type TemplateRepo interface {
 	GetByID(id uint) (*Template, error)
 	List() ([]Template, error)
 	Update(t *Template) error
+	Delete(id uint) error
+	IsUsedByContract(id uint) (bool, error)
 }
 
 type UserRepo interface {

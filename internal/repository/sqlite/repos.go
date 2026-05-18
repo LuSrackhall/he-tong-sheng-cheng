@@ -84,6 +84,16 @@ func (r *TemplateRepo) Update(t *domain.Template) error {
 	return r.db.Save(t).Error
 }
 
+func (r *TemplateRepo) Delete(id uint) error {
+	return r.db.Delete(&domain.Template{}, id).Error
+}
+
+func (r *TemplateRepo) IsUsedByContract(id uint) (bool, error) {
+	var count int64
+	err := r.db.Model(&domain.Contract{}).Where("template_id = ?", id).Count(&count).Error
+	return count > 0, err
+}
+
 func (r *UserRepo) Create(u *domain.User) error {
 	return r.db.Create(u).Error
 }
