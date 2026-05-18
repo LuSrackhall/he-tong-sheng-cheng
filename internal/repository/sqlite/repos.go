@@ -11,6 +11,15 @@ func (r *ReceiptRepo) Create(rc *domain.Receipt) error {
 	return r.db.Create(rc).Error
 }
 
+func (r *ReceiptRepo) GetByID(id uint) (*domain.Receipt, error) {
+	var rc domain.Receipt
+	err := r.db.First(&rc, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &rc, nil
+}
+
 func (r *ReceiptRepo) GetByPaymentID(paymentID uint) (*domain.Receipt, error) {
 	var rc domain.Receipt
 	err := r.db.Where("payment_id = ?", paymentID).First(&rc).Error

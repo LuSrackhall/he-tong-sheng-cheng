@@ -65,6 +65,15 @@ func (r *PaymentRepo) Create(p *domain.Payment) error {
 	return r.db.Create(p).Error
 }
 
+func (r *PaymentRepo) GetByID(id uint) (*domain.Payment, error) {
+	var p domain.Payment
+	err := r.db.First(&p, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func (r *PaymentRepo) ListByContractID(contractID uint) ([]domain.Payment, error) {
 	var payments []domain.Payment
 	err := r.db.Where("contract_id = ?", contractID).Order("paid_at desc").Find(&payments).Error
@@ -73,6 +82,15 @@ func (r *PaymentRepo) ListByContractID(contractID uint) ([]domain.Payment, error
 
 func (r *ReceiptRepo) Create(rc *domain.Receipt) error {
 	return r.db.Create(rc).Error
+}
+
+func (r *ReceiptRepo) GetByID(id uint) (*domain.Receipt, error) {
+	var rc domain.Receipt
+	err := r.db.First(&rc, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &rc, nil
 }
 
 func (r *ReceiptRepo) GetByPaymentID(paymentID uint) (*domain.Receipt, error) {

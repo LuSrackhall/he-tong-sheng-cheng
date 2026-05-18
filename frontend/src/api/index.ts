@@ -44,9 +44,23 @@ export const tenantApi = {
 
 export const contractApi = {
   list: (params?: any) => api.get<{ data: Contract[]; total: number }>('/contracts', { params }),
-  create: (data: Partial<Contract>) => api.post<Contract>('/contracts', data),
+  create: (data: Partial<Contract> & { templateId?: number }) => api.post<Contract>('/contracts', data),
   get: (id: number) => api.get<Contract>(`/contracts/${id}`),
   update: (id: number, data: Partial<Contract>) => api.patch<Contract>(`/contracts/${id}`, data),
+  export: (id: number) => api.post<{ message: string }>(`/contracts/${id}/export`),
+  download: (id: number) => api.get(`/contracts/${id}/download`, { responseType: 'blob' }),
+}
+
+export interface Template {
+  id: number
+  name: string
+  filePath: string
+  fieldMap?: string
+  createdAt: string
+}
+
+export const templateApi = {
+  list: () => api.get<{ data: Template[] } | Template[]>('/templates'),
 }
 
 export const paymentApi = {

@@ -28,11 +28,13 @@ type ContractRepo interface {
 
 type PaymentRepo interface {
 	Create(p *Payment) error
+	GetByID(id uint) (*Payment, error)
 	ListByContractID(contractID uint) ([]Payment, error)
 }
 
 type ReceiptRepo interface {
 	Create(r *Receipt) error
+	GetByID(id uint) (*Receipt, error)
 	GetByPaymentID(paymentID uint) (*Receipt, error)
 }
 
