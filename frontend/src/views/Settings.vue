@@ -121,6 +121,25 @@ const presetFieldGroups = [
   },
 ]
 
+const presetFieldLabels: Record<string, string> = {
+  contractId: '合同编号',
+  startDate: '开始日期',
+  endDate: '结束日期',
+  monthlyRent: '月租金',
+  totalReceivable: '应收总额',
+  totalReceived: '已收总额',
+  deposit: '押金',
+  status: '状态',
+  notes: '备注',
+  assetName: '资产名称',
+  assetType: '资产类型',
+  assetDescription: '资产描述',
+  tenantName: '租户姓名',
+  tenantIDCard: '身份证号',
+  tenantPhone: '联系电话',
+  today: '今日日期',
+}
+
 function hasFile(t: Template): boolean {
   return !!t.filePath && t.filePath.trim().length > 0
 }
@@ -198,7 +217,7 @@ function parseUncommentedKeys(raw: string): string[] {
 
 // All fields (preset + custom) for chip rendering
 function allFieldChips(templateId: number): Array<{ name: string; label: string; isPreset: boolean }> {
-  const preset = presetFieldGroups.flatMap(g => g.fields.map(f => ({ name: f, label: f, isPreset: true })))
+  const preset = presetFieldGroups.flatMap(g => g.fields.map(f => ({ name: f, label: presetFieldLabels[f] || f, isPreset: true })))
   const custom = (customFieldDefs.value[templateId] || []).map(c => ({ name: c.name, label: c.label, isPreset: false }))
   return [...preset, ...custom]
 }
