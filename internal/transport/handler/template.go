@@ -5,6 +5,7 @@ import (
 	"asset-leasing-system/internal/domain"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -50,8 +51,8 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 	}
 	defer src.Close()
 
-	fileData := make([]byte, file.Size)
-	if _, err := src.Read(fileData); err != nil {
+	fileData, err := io.ReadAll(src)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read uploaded file"})
 		return
 	}
@@ -65,6 +66,8 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 			return
 		}
 		if len(missing) > 0 {
+			tpl.Validated = false
+			h.templateRepo.Update(tpl)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error":        "Word 文件缺少以下已启用的占位符",
 				"missingFields": missing,
@@ -72,6 +75,8 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 			return
 		}
 	}
+
+	tpl.Validated = true
 
 	uploadDir := "uploads/templates"
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
@@ -121,6 +126,11 @@ func (h *ContractHandler) ExportContract(c *gin.Context) {
 
 	if tpl.FilePath == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Template file not uploaded yet"})
+		return
+	}
+
+	if !tpl.Validated {
+		c.JSON(http.StatusConflict, gin.H{"error": "模板校验未通过，请先上传符合要求的 Word 文件"})
 		return
 	}
 

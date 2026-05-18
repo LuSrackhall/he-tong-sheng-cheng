@@ -8,6 +8,7 @@ interface Template {
   filePath: string
   fieldMap: string
   activeFields: string
+  validated: boolean
   createdAt: string
 }
 
@@ -320,8 +321,16 @@ async function saveMapping(t: Template) {
     const fieldMap = mapping.value[t.id] || '{}'
     const activeArr = [...(activeSet.value[t.id] || new Set())]
     const activeFields = JSON.stringify(activeArr)
-    await templateApi.updateMapping(t.id, fieldMap, activeFields)
-    flash('字段映射已保存')
+    const res = await templateApi.updateMapping(t.id, fieldMap, activeFields)
+    if (res.data.filePath) {
+      if (res.data.validated) {
+        flash('映射已保存，Word 文件校验通过')
+      } else {
+        flashError('映射已保存，但 Word 文件校验未通过，请重新上传符合要求的 Word 文件')
+      }
+    } else {
+      flash('字段映射已保存')
+    }
     await fetchTemplates()
   } catch (e: any) {
     jsonErrors.value[t.id] = e.response?.data?.error || '保存失败'
@@ -375,6 +384,9 @@ onMounted(fetchTemplates)
             <span class="template-name">{{ t.name }}</span>
             <span :class="['file-badge', hasFile(t) ? 'file-ok' : 'file-missing']">
               {{ hasFile(t) ? '文件已上传' : '未上传文件' }}
+            </span>
+            <span v-if="t.filePath" :class="['badge-validated', t.validated ? 'badge-ok' : 'badge-fail']">
+              {{ t.validated ? '校验通过' : '校验未通过' }}
             </span>
             <button
               class="btn-delete-template"
@@ -630,6 +642,9 @@ onMounted(fetchTemplates)
 .file-badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
 .file-ok { background: rgba(52,199,89,0.1); color: var(--color-success); }
 .file-missing { background: rgba(255,149,0,0.1); color: #b87a00; }
+.badge-validated { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; font-weight: 500; margin-left: 4px; }
+.badge-ok { background: rgba(52,199,89,0.1); color: var(--color-success); }
+.badge-fail { background: rgba(255,59,48,0.1); color: var(--color-danger); }
 .card-meta { display: flex; gap: 16px; font-size: 0.75rem; color: var(--color-text-tertiary); }
 .meta-path { font-family: var(--font-mono); word-break: break-all; }
 

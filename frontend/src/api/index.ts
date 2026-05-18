@@ -57,6 +57,7 @@ export interface Template {
   filePath: string
   fieldMap?: string
   activeFields?: string
+  validated: boolean
   createdAt: string
 }
 

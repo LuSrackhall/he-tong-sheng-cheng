@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"asset-leasing-system/internal/docx"
 	"asset-leasing-system/internal/domain"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -235,6 +237,27 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 	if err := h.templateRepo.Update(tpl); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template mapping"})
 		return
+	}
+
+	// Re-validate existing Word file if present
+	if tpl.FilePath != "" {
+		fileData, err := os.ReadFile(tpl.FilePath)
+		if err != nil {
+			tpl.Validated = false
+		} else {
+			activeFields := parseActiveFields(tpl.ActiveFields)
+			if len(activeFields) > 0 {
+				missing, err := docx.ValidatePlaceholders(fileData, activeFields)
+				if err != nil {
+					tpl.Validated = false
+				} else {
+					tpl.Validated = len(missing) == 0
+				}
+			} else {
+				tpl.Validated = true
+			}
+		}
+		h.templateRepo.Update(tpl)
 	}
 
 	c.JSON(http.StatusOK, tpl)

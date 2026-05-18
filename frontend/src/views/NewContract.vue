@@ -278,7 +278,11 @@ async function handleExport() {
   try {
     await contractApi.export(createdContract.value.id)
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.error || '合同文件生成失败'
+    if (err.response?.status === 409) {
+      errorMessage.value = '模板校验未通过，请先在设置中重新上传符合要求的 Word 文件'
+    } else {
+      errorMessage.value = err.response?.data?.error || '合同文件生成失败'
+    }
   } finally {
     exporting.value = false
   }
