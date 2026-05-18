@@ -220,7 +220,8 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 	}
 
 	var req struct {
-		FieldMap string `json:"fieldMap" binding:"required"`
+		FieldMap     string `json:"fieldMap" binding:"required"`
+		ActiveFields string `json:"activeFields"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Field map is required"})
@@ -228,6 +229,9 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 	}
 
 	tpl.FieldMap = req.FieldMap
+	if req.ActiveFields != "" {
+		tpl.ActiveFields = req.ActiveFields
+	}
 	if err := h.templateRepo.Update(tpl); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template mapping"})
 		return
