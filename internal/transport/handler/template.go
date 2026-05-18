@@ -16,7 +16,7 @@ import (
 )
 
 // UploadTemplate handles POST /api/templates/:id/upload
-// Accepts multipart form file, saves to uploads/templates/, updates template FilePath.
+// Validates that the uploaded docx contains all activeField placeholders.
 func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -42,6 +42,37 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 		return
 	}
 
+	// Read file into memory for validation
+	src, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read uploaded file"})
+		return
+	}
+	defer src.Close()
+
+	fileData := make([]byte, file.Size)
+	if _, err := src.Read(fileData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read uploaded file"})
+		return
+	}
+
+	// Validate placeholders against active fields
+	activeFields := parseActiveFields(tpl.ActiveFields)
+	if len(activeFields) > 0 {
+		missing, err := docx.ValidatePlaceholders(fileData, activeFields)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse docx: " + err.Error()})
+			return
+		}
+		if len(missing) > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":        "Word 文件缺少以下已启用的占位符",
+				"missingFields": missing,
+			})
+			return
+		}
+	}
+
 	uploadDir := "uploads/templates"
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
@@ -49,7 +80,7 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 	}
 
 	destPath := filepath.Join(uploadDir, fmt.Sprintf("template_%d.docx", id))
-	if err := c.SaveUploadedFile(file, destPath); err != nil {
+	if err := os.WriteFile(destPath, fileData, 0644); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 		return
 	}
@@ -64,7 +95,6 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 }
 
 // ExportContract handles POST /api/contracts/:id/export
-// Fills the contract's associated template with data and saves the output docx.
 func (h *ContractHandler) ExportContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -129,7 +159,6 @@ func (h *ContractHandler) ExportContract(c *gin.Context) {
 }
 
 // DownloadContract handles GET /api/contracts/:id/download
-// Serves the previously exported docx file.
 func (h *ContractHandler) DownloadContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -144,7 +173,6 @@ func (h *ContractHandler) DownloadContract(c *gin.Context) {
 		return
 	}
 
-	// Get contract for filename
 	contract, err := h.repo.GetByID(uint(id))
 	filename := fmt.Sprintf("contract_%d.docx", id)
 	if err == nil && contract.Tenant != nil {
@@ -157,12 +185,55 @@ func (h *ContractHandler) DownloadContract(c *gin.Context) {
 	c.File(exportPath)
 }
 
-// buildReplaceValues collects all placeholder values from contract, asset, tenant data
-// combined with the template's fieldMap.
+// parseActiveFields parses the JSON array of active field keys.
+func parseActiveFields(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	var fields []string
+	if err := json.Unmarshal([]byte(raw), &fields); err != nil {
+		return nil
+	}
+	return fields
+}
+
+// DeleteTemplate handles DELETE /api/templates/:id
+func (h *ContractHandler) DeleteTemplate(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		return
+	}
+
+	_, err = h.templateRepo.GetByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
+	}
+
+	used, err := h.templateRepo.IsUsedByContract(uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check template usage"})
+		return
+	}
+	if used {
+		c.JSON(http.StatusConflict, gin.H{"error": "该模板已被合同引用，无法删除"})
+		return
+	}
+
+	if err := h.templateRepo.Delete(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete template"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "模板已删除"})
+}
+
+// buildReplaceValues collects all placeholder values from contract, asset, tenant data.
 func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[string]string {
 	values := make(map[string]string)
 
-	// Parse fieldMap to know which fields are mapped (for display labels)
+	// Only build values for fields in the fieldMap (to avoid unnecessary work)
 	fieldMap := make(map[string]string)
 	if tpl.FieldMap != "" {
 		_ = json.Unmarshal([]byte(tpl.FieldMap), &fieldMap)
@@ -179,7 +250,6 @@ func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[str
 	values["notes"] = contract.Notes
 	values["status"] = contract.Status
 
-	// Asset fields
 	if contract.Asset != nil {
 		values["assetName"] = contract.Asset.Name
 		values["assetType"] = contract.Asset.AssetType
@@ -190,7 +260,6 @@ func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[str
 		values["assetDescription"] = ""
 	}
 
-	// Tenant fields
 	if contract.Tenant != nil {
 		values["tenantName"] = contract.Tenant.Name
 		values["tenantIDCard"] = contract.Tenant.IDCard
@@ -201,10 +270,9 @@ func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[str
 		values["tenantPhone"] = ""
 	}
 
-	// Date field
 	values["today"] = time.Now().Format("2006-01-02")
 
-	// Also add the fieldMap labels themselves as values so users can map custom keys
+	// Add all keys from fieldMap as values so custom fields get replaced
 	for key := range fieldMap {
 		if _, exists := values[key]; !exists {
 			values[key] = ""
