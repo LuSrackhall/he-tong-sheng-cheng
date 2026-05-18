@@ -69,23 +69,18 @@ function addCustomField(templateId: number) {
 
   const allPresetFields = presetFieldGroups.flatMap(g => g.fields)
   const existingMapKeys = getMapKeys(templateId)
-  const existingCustoms = customFieldDefs.value[templateId] || []
-  if (allPresetFields.includes(name) || existingMapKeys.includes(name) || existingCustoms.some(c => c.name === name)) {
+  if (allPresetFields.includes(name) || existingMapKeys.includes(name)) {
     customFieldError.value[templateId] = `字段名 "${name}" 已存在`
     return
   }
 
-  if (!customFieldDefs.value[templateId]) {
-    customFieldDefs.value[templateId] = []
-  }
-  customFieldDefs.value[templateId].push({ name, label })
+  // Write directly to JSON textarea
+  insertFieldPlaceholder(templateId, name, label)
 
   showCustomField.value[templateId] = false
   jsonErrors.value[templateId] = ''
 }
 
-// Custom field definitions per template (chip only, not in JSON yet)
-const customFieldDefs = ref<Record<number, Array<{ name: string; label: string }>>>({})
 
 // Upload state per template
 const uploadProgress = ref<Record<number, number>>({})
@@ -168,9 +163,6 @@ async function fetchTemplates() {
       if (!mapping.value[t.id]) {
         mapping.value[t.id] = t.fieldMap || '{}'
       }
-      if (!customFieldDefs.value[t.id]) {
-        customFieldDefs.value[t.id] = []
-      }
     })
   } catch { /* handled by interceptor */ }
 }
@@ -206,10 +198,37 @@ function parseUncommentedKeys(raw: string): string[] {
   }
 }
 
+// Parse JSON (skip comments) to key→label Record
+function parseJsonLabels(templateId: number): Record<string, string> {
+  const raw = mapping.value[templateId] || ''
+  if (!raw.trim()) return {}
+  const uncommentedLines = raw.split('\n').filter(line => !line.trim().startsWith('//'))
+  const cleanedJson = uncommentedLines.join('\n')
+  try {
+    const obj = JSON.parse(cleanedJson)
+    const result: Record<string, string> = {}
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string') result[key] = value
+    }
+    return result
+  } catch { return {} }
+}
+
 // All fields (preset + custom) for chip rendering
 function allFieldChips(templateId: number): Array<{ name: string; label: string; isPreset: boolean }> {
-  const preset = presetFieldGroups.flatMap(g => g.fields.map(f => ({ name: f, label: presetFieldLabels[f] || f, isPreset: true })))
-  const custom = (customFieldDefs.value[templateId] || []).map(c => ({ name: c.name, label: c.label, isPreset: false }))
+  const jsonLabels = parseJsonLabels(templateId)
+  const presetKeys = new Set(presetFieldGroups.flatMap(g => g.fields))
+  const preset = presetFieldGroups.flatMap(g => g.fields.map(f => ({
+    name: f,
+    label: jsonLabels[f] || presetFieldLabels[f] || f,
+    isPreset: true,
+  })))
+  const custom: Array<{ name: string; label: string; isPreset: boolean }> = []
+  for (const [key, value] of Object.entries(jsonLabels)) {
+    if (!presetKeys.has(key)) {
+      custom.push({ name: key, label: value || key, isPreset: false })
+    }
+  }
   return [...preset, ...custom]
 }
 
