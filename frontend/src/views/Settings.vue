@@ -175,15 +175,6 @@ async function fetchTemplates() {
   } catch { /* handled by interceptor */ }
 }
 
-function parseFieldMap(raw: string): Record<string, string> {
-  if (!raw || !raw.trim()) return {}
-  const uncommented = raw.split('\n').filter(line => !line.trim().startsWith('//')).join('\n')
-  if (!uncommented.trim()) return {}
-  try {
-    const obj = JSON.parse(uncommented)
-    return typeof obj === 'object' && obj !== null && !Array.isArray(obj) ? obj : {}
-  } catch { return {} }
-}
 
 // All keys found in JSON text (including commented lines)
 function getAllKeysInJson(templateId: number): string[] {
@@ -567,7 +558,7 @@ onMounted(fetchTemplates)
                   @click="insertFieldPlaceholder(t.id, chip.name, chip.label)"
                   :title="getMapKeys(t.id).includes(chip.name) ? '点击从映射中移除' : '点击添加到映射'">
                   ${{ '{' + chip.name + '}' }}
-                  <span class="chip-label-text">→ {{ parseFieldMap(mapping[t.id] || '{}')[chip.name] || chip.label }}</span>
+                  <span class="chip-label-text">→ {{ chip.label }}</span>
                 </button>
                 <button
                   v-if="getMapKeys(t.id).includes(chip.name)"
