@@ -243,19 +243,13 @@ function isActive(templateId: number, key: string): boolean {
 }
 
 function toggleActive(templateId: number, key: string) {
-  const raw = mapping.value[templateId] || ''
-  const lines = raw.split('\n')
-  const newLines = lines.map(line => {
-    if (line.includes(`"${key}"`)) {
-      if (line.trim().startsWith('//')) {
-        return line.replace(/^(\s*)\/\/\s*/, '$1')
-      } else {
-        return line.replace(/^(\s*)/, '$1// ')
-      }
+  rebuildJson(templateId, (_obj) => {}, (commented) => {
+    if (commented.has(key)) {
+      commented.delete(key)
+    } else {
+      commented.add(key)
     }
-    return line
   })
-  mapping.value[templateId] = newLines.join('\n')
 }
 
 // Template creation
@@ -314,43 +308,60 @@ async function uploadFile(templateId: number, file: File) {
   }
 }
 
-// Field mapping
-function insertFieldPlaceholder(templateId: number, fieldName: string, label?: string) {
-  const displayLabel = label || fieldName
+// Rebuild JSON from current text, applying object and comment modifications
+function rebuildJson(
+  templateId: number,
+  modifyObj: (obj: Record<string, string>) => void,
+  modifyComments?: (commented: Set<string>) => void,
+) {
   const raw = mapping.value[templateId] || ''
-  const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const keyRegex = new RegExp(`"${escaped}"\\s*:`)
-  if (keyRegex.test(raw)) {
-    // Remove the line(s) containing this key
-    const lines = raw.split('\n')
-    let filtered = lines.filter(line => !line.includes(`"${fieldName}"`))
-    // Clean up trailing commas on preceding line
-    filtered = filtered.map((line, i) => {
-      if (i < filtered.length - 1 && filtered[i + 1].trim().startsWith('"')) {
-        return line.replace(/,$/, '')
+
+  const commentedKeys = new Set<string>()
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('//')) {
+      const match = trimmed.match(/"([^"]+)"/)
+      if (match) commentedKeys.add(match[1])
+    }
+  }
+
+  const uncommentedLines = raw.split('\n').filter(l => !l.trim().startsWith('//'))
+  const cleanedJson = uncommentedLines.join('\n')
+  let obj: Record<string, string> = {}
+  try {
+    if (cleanedJson.trim()) obj = JSON.parse(cleanedJson)
+  } catch { /* keep empty */ }
+
+  modifyObj(obj)
+  if (modifyComments) modifyComments(commentedKeys)
+
+  const formatted = JSON.stringify(obj, null, 2)
+  if (commentedKeys.size === 0) {
+    mapping.value[templateId] = formatted
+  } else {
+    const fmtLines = formatted.split('\n')
+    const result = fmtLines.map(line => {
+      for (const ck of commentedKeys) {
+        if (line.includes(`"${ck}"`)) {
+          return line.replace(/^(\s*)/, '$1// ')
+        }
       }
       return line
     })
-    mapping.value[templateId] = filtered.join('\n').trim() || ''
-  } else {
-    // Add new line to JSON text
-    const trimmed = raw.trim()
-    if (!trimmed || trimmed === '{}') {
-      mapping.value[templateId] = `{\n  "${fieldName}": "${displayLabel}"\n}`
-    } else {
-      const lastBraceIdx = raw.lastIndexOf('}')
-      const newLine = `  "${fieldName}": "${displayLabel}"`
-      if (lastBraceIdx >= 0) {
-        let before = raw.substring(0, lastBraceIdx).trimEnd()
-        const after = raw.substring(lastBraceIdx)
-        const needsComma = before.length > 0 && !/,\s*$/.test(before)
-        if (needsComma) before += ','
-        mapping.value[templateId] = before + '\n' + newLine + '\n' + after.trimStart()
-      } else {
-        mapping.value[templateId] = raw.trimEnd() + ',\n' + newLine + '\n}'
-      }
-    }
+    mapping.value[templateId] = result.join('\n')
   }
+}
+
+// Field mapping
+function insertFieldPlaceholder(templateId: number, fieldName: string, label?: string) {
+  const displayLabel = label || fieldName
+  rebuildJson(templateId, (obj) => {
+    if (fieldName in obj) {
+      delete obj[fieldName]
+    } else {
+      obj[fieldName] = displayLabel
+    }
+  })
   jsonErrors.value[templateId] = ''
 }
 
