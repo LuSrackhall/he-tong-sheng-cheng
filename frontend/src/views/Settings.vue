@@ -69,30 +69,23 @@ function addCustomField(templateId: number) {
 
   const allPresetFields = presetFieldGroups.flatMap(g => g.fields)
   const existingMapKeys = getMapKeys(templateId)
-  if (allPresetFields.includes(name) || existingMapKeys.includes(name)) {
+  const existingCustoms = customFieldDefs.value[templateId] || []
+  if (allPresetFields.includes(name) || existingMapKeys.includes(name) || existingCustoms.some(c => c.name === name)) {
     customFieldError.value[templateId] = `字段名 "${name}" 已存在`
     return
   }
 
-  const current = mapping.value[templateId] || '{}'
-  try {
-    const obj = parseFieldMap(current)
-    obj[name] = label
-    mapping.value[templateId] = JSON.stringify(obj, null, 2)
-  } catch {
-    mapping.value[templateId] = JSON.stringify({ [name]: label }, null, 2)
+  if (!customFieldDefs.value[templateId]) {
+    customFieldDefs.value[templateId] = []
   }
-
-  if (!activeSet.value[templateId]) {
-    activeSet.value[templateId] = new Set()
-  }
-  const s = activeSet.value[templateId]
-  s.add(name)
-  activeSet.value[templateId] = new Set(s)
+  customFieldDefs.value[templateId].push({ name, label })
 
   showCustomField.value[templateId] = false
   jsonErrors.value[templateId] = ''
 }
+
+// Custom field definitions per template (chip only, not in JSON yet)
+const customFieldDefs = ref<Record<number, Array<{ name: string; label: string }>>>({})
 
 // Upload state per template
 const uploadProgress = ref<Record<number, number>>({})
@@ -101,7 +94,6 @@ const fileInputRefs = ref<Record<number, HTMLInputElement | null>>({})
 
 // Mapping state per template
 const mapping = ref<Record<number, string>>({})
-const activeSet = ref<Record<number, Set<string>>>({})
 const saving = ref<Record<number, boolean>>({})
 const jsonErrors = ref<Record<number, string>>({})
 
@@ -157,50 +149,84 @@ async function fetchTemplates() {
       if (!mapping.value[t.id]) {
         mapping.value[t.id] = t.fieldMap || '{}'
       }
-      if (!activeSet.value[t.id]) {
-        activeSet.value[t.id] = new Set(parseActiveFields(t.activeFields))
+      if (!customFieldDefs.value[t.id]) {
+        customFieldDefs.value[t.id] = []
       }
     })
   } catch { /* handled by interceptor */ }
 }
 
-function parseActiveFields(raw: string): string[] {
-  if (!raw || !raw.trim()) return []
-  try {
-    const arr = JSON.parse(raw)
-    return Array.isArray(arr) ? arr : []
-  } catch { return [] }
-}
-
 function parseFieldMap(raw: string): Record<string, string> {
   if (!raw || !raw.trim()) return {}
+  const uncommented = raw.split('\n').filter(line => !line.trim().startsWith('//')).join('\n')
+  if (!uncommented.trim()) return {}
   try {
-    const obj = JSON.parse(raw)
+    const obj = JSON.parse(uncommented)
     return typeof obj === 'object' && obj !== null && !Array.isArray(obj) ? obj : {}
   } catch { return {} }
 }
 
-// Computed: all keys currently in the fieldMap JSON
+// All keys found in JSON text (including commented lines)
+function getAllKeysInJson(templateId: number): string[] {
+  const raw = mapping.value[templateId] || ''
+  const keyRegex = /"([^"]+)"\s*:/g
+  const keys: string[] = []
+  let match
+  while ((match = keyRegex.exec(raw)) !== null) {
+    if (!keys.includes(match[1])) keys.push(match[1])
+  }
+  return keys
+}
+
+// Computed: all keys currently in the fieldMap JSON (including commented lines)
 function getMapKeys(templateId: number): string[] {
-  return Object.keys(parseFieldMap(mapping.value[templateId] || ''))
+  return getAllKeysInJson(templateId)
+}
+
+// Parse uncommented keys from JSON text (single source of truth for "active")
+function parseUncommentedKeys(raw: string): string[] {
+  if (!raw || !raw.trim()) return []
+  const uncommentedLines = raw.split('\n').filter(line => !line.trim().startsWith('//'))
+  const cleanedJson = uncommentedLines.join('\n')
+  try {
+    const obj = JSON.parse(cleanedJson)
+    return Object.keys(obj)
+  } catch {
+    return []
+  }
+}
+
+// All fields (preset + custom) for chip rendering
+function allFieldChips(templateId: number): Array<{ name: string; label: string; isPreset: boolean }> {
+  const preset = presetFieldGroups.flatMap(g => g.fields.map(f => ({ name: f, label: f, isPreset: true })))
+  const custom = (customFieldDefs.value[templateId] || []).map(c => ({ name: c.name, label: c.label, isPreset: false }))
+  return [...preset, ...custom]
 }
 
 function isActive(templateId: number, key: string): boolean {
-  return activeSet.value[templateId]?.has(key) ?? false
+  const raw = mapping.value[templateId] || ''
+  for (const line of raw.split('\n')) {
+    if (line.includes(`"${key}"`)) {
+      return !line.trim().startsWith('//')
+    }
+  }
+  return false
 }
 
 function toggleActive(templateId: number, key: string) {
-  if (!activeSet.value[templateId]) {
-    activeSet.value[templateId] = new Set()
-  }
-  const s = activeSet.value[templateId]
-  if (s.has(key)) {
-    s.delete(key)
-  } else {
-    s.add(key)
-  }
-  // trigger reactivity
-  activeSet.value[templateId] = new Set(s)
+  const raw = mapping.value[templateId] || ''
+  const lines = raw.split('\n')
+  const newLines = lines.map(line => {
+    if (line.includes(`"${key}"`)) {
+      if (line.trim().startsWith('//')) {
+        return line.replace(/^(\s*)\/\/\s*/, '$1')
+      } else {
+        return line.replace(/^(\s*)/, '$1// ')
+      }
+    }
+    return line
+  })
+  mapping.value[templateId] = newLines.join('\n')
 }
 
 // Template creation
@@ -260,36 +286,53 @@ async function uploadFile(templateId: number, file: File) {
 }
 
 // Field mapping
-function insertFieldPlaceholder(templateId: number, fieldName: string) {
-  const current = mapping.value[templateId] || '{}'
-  try {
-    const obj = parseFieldMap(current)
-    if (!obj[fieldName]) {
-      obj[fieldName] = fieldName
-      mapping.value[templateId] = JSON.stringify(obj, null, 2)
+function insertFieldPlaceholder(templateId: number, fieldName: string, label?: string) {
+  const displayLabel = label || fieldName
+  const raw = mapping.value[templateId] || ''
+  const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const keyRegex = new RegExp(`"${escaped}"\\s*:`)
+  if (keyRegex.test(raw)) {
+    // Remove the line(s) containing this key
+    const lines = raw.split('\n')
+    let filtered = lines.filter(line => !line.includes(`"${fieldName}"`))
+    // Clean up trailing commas on preceding line
+    filtered = filtered.map((line, i) => {
+      if (i < filtered.length - 1 && filtered[i + 1].trim().startsWith('"')) {
+        return line.replace(/,$/, '')
+      }
+      return line
+    })
+    mapping.value[templateId] = filtered.join('\n').trim() || ''
+  } else {
+    // Add new line to JSON text
+    const trimmed = raw.trim()
+    if (!trimmed || trimmed === '{}') {
+      mapping.value[templateId] = `{\n  "${fieldName}": "${displayLabel}"\n}`
+    } else {
+      const lastBraceIdx = raw.lastIndexOf('}')
+      const newLine = `  "${fieldName}": "${displayLabel}"`
+      if (lastBraceIdx >= 0) {
+        let before = raw.substring(0, lastBraceIdx).trimEnd()
+        const after = raw.substring(lastBraceIdx)
+        const needsComma = before.length > 0 && !/,\s*$/.test(before)
+        if (needsComma) before += ','
+        mapping.value[templateId] = before + '\n' + newLine + '\n' + after.trimStart()
+      } else {
+        mapping.value[templateId] = raw.trimEnd() + ',\n' + newLine + '\n}'
+      }
     }
-  } catch {
-    mapping.value[templateId] = JSON.stringify({ [fieldName]: fieldName }, null, 2)
   }
-
-  // Auto-enable: add to activeSet
-  if (!activeSet.value[templateId]) {
-    activeSet.value[templateId] = new Set()
-  }
-  const s = activeSet.value[templateId]
-  if (!s.has(fieldName)) {
-    s.add(fieldName)
-    activeSet.value[templateId] = new Set(s)
-  }
-
   jsonErrors.value[templateId] = ''
 }
 
 function validateJson(templateId: number): boolean {
   const raw = mapping.value[templateId] || ''
   if (!raw.trim()) { jsonErrors.value[templateId] = ''; return true }
+  // Strip comment lines for validation
+  const uncommented = raw.split('\n').filter(line => !line.trim().startsWith('//')).join('\n')
+  if (!uncommented.trim()) { jsonErrors.value[templateId] = ''; return true }
   try {
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(uncommented)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       jsonErrors.value[templateId] = '映射必须是 JSON 对象'
       return false
@@ -305,8 +348,35 @@ function validateJson(templateId: number): boolean {
 function formatJson(templateId: number) {
   const raw = mapping.value[templateId] || ''
   if (!raw.trim()) return
+  const lines = raw.split('\n')
+  const uncommented = lines.filter(line => !line.trim().startsWith('//')).join('\n')
+  if (!uncommented.trim()) return
   try {
-    mapping.value[templateId] = JSON.stringify(JSON.parse(raw), null, 2)
+    const parsed = JSON.parse(uncommented)
+    const formatted = JSON.stringify(parsed, null, 2)
+    // Re-apply comments: find lines that were commented and comment their equivalents
+    const commentedKeys = new Set<string>()
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('//')) {
+        const keyMatch = trimmed.match(/"([^"]+)"/)
+        if (keyMatch) commentedKeys.add(keyMatch[1])
+      }
+    }
+    if (commentedKeys.size === 0) {
+      mapping.value[templateId] = formatted
+    } else {
+      const fmtLines = formatted.split('\n')
+      const result = fmtLines.map(line => {
+        for (const key of commentedKeys) {
+          if (line.includes(`"${key}"`)) {
+            return line.replace(/^(\s*)/, '$1// ')
+          }
+        }
+        return line
+      })
+      mapping.value[templateId] = result.join('\n')
+    }
     jsonErrors.value[templateId] = ''
   } catch (e: any) {
     jsonErrors.value[templateId] = 'JSON 格式错误: ' + e.message
@@ -319,7 +389,8 @@ async function saveMapping(t: Template) {
   saving.value[t.id] = true
   try {
     const fieldMap = mapping.value[t.id] || '{}'
-    const activeArr = [...(activeSet.value[t.id] || new Set())]
+    // Derive active fields from uncommented keys in the JSON textarea
+    const activeArr = parseUncommentedKeys(fieldMap)
     const activeFields = JSON.stringify(activeArr)
     const res = await templateApi.updateMapping(t.id, fieldMap, activeFields)
     if (res.data.filePath) {
@@ -465,30 +536,27 @@ onMounted(fetchTemplates)
             </span>
           </div>
 
-          <!-- Preset field tags with active toggles -->
+          <!-- Field chips with active toggles -->
           <div class="preset-fields">
-            <template v-for="group in presetFieldGroups" :key="group.category">
-              <span class="preset-category">{{ group.category }}</span>
+            <template v-for="chip in allFieldChips(t.id)" :key="chip.name">
               <div
-                v-for="field in group.fields"
-                :key="field"
-                :class="['field-chip', { 'field-in-map': getMapKeys(t.id).includes(field), 'field-active': isActive(t.id, field) }]"
+                :class="['field-chip', { 'field-in-map': getMapKeys(t.id).includes(chip.name), 'field-active': isActive(t.id, chip.name) }]"
               >
                 <button
                   class="chip-label"
                   type="button"
-                  @click="insertFieldPlaceholder(t.id, field)"
-                  :title="'添加到映射'">
-                  ${{ '{' + field + '}' }}
-                  <span class="chip-label-text">→ {{ parseFieldMap(mapping[t.id] || '{}')[field] || field }}</span>
+                  @click="insertFieldPlaceholder(t.id, chip.name, chip.label)"
+                  :title="getMapKeys(t.id).includes(chip.name) ? '点击从映射中移除' : '点击添加到映射'">
+                  ${{ '{' + chip.name + '}' }}
+                  <span class="chip-label-text">→ {{ parseFieldMap(mapping[t.id] || '{}')[chip.name] || chip.label }}</span>
                 </button>
                 <button
-                  v-if="getMapKeys(t.id).includes(field)"
-                  :class="['chip-toggle', { on: isActive(t.id, field) }]"
+                  v-if="getMapKeys(t.id).includes(chip.name)"
+                  :class="['chip-toggle', { on: isActive(t.id, chip.name) }]"
                   type="button"
-                  @click="toggleActive(t.id, field)"
-                  :title="isActive(t.id, field) ? '已启用，点击关闭' : '未启用，点击开启'">
-                  {{ isActive(t.id, field) ? '✓' : '○' }}
+                  @click="toggleActive(t.id, chip.name)"
+                  :title="isActive(t.id, chip.name) ? '已启用，点击禁用' : '未启用，点击启用'">
+                  {{ isActive(t.id, chip.name) ? '✓' : '○' }}
                 </button>
               </div>
             </template>
@@ -514,9 +582,9 @@ onMounted(fetchTemplates)
           />
 
           <!-- Active fields summary -->
-          <div v-if="activeSet[t.id]?.size" class="active-summary">
-            <span class="active-label">已启用字段（{{ activeSet[t.id].size }}）：</span>
-            <code v-for="f in [...activeSet[t.id]]" :key="f" class="active-tag">${{ '{' + f + '}' }}</code>
+          <div v-if="parseUncommentedKeys(mapping[t.id] || '').length" class="active-summary">
+            <span class="active-label">已启用字段（{{ parseUncommentedKeys(mapping[t.id] || '').length }}）：</span>
+            <code v-for="f in parseUncommentedKeys(mapping[t.id] || '')" :key="f" class="active-tag">${{ '{' + f + '}' }}</code>
           </div>
           <div v-else class="active-summary empty">
             暂未启用任何映射字段，请先在映射中添加字段并开启开关

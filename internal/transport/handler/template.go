@@ -243,10 +243,17 @@ func (h *ContractHandler) DeleteTemplate(c *gin.Context) {
 func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[string]string {
 	values := make(map[string]string)
 
-	// Only build values for fields in the fieldMap (to avoid unnecessary work)
+	// Parse fieldMap, stripping comment-prefixed lines
 	fieldMap := make(map[string]string)
 	if tpl.FieldMap != "" {
-		_ = json.Unmarshal([]byte(tpl.FieldMap), &fieldMap)
+		uncommented := strings.Builder{}
+		for _, line := range strings.Split(tpl.FieldMap, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" && !strings.HasPrefix(trimmed, "//") {
+				uncommented.WriteString(line + "\n")
+			}
+		}
+		_ = json.Unmarshal([]byte(uncommented.String()), &fieldMap)
 	}
 
 	// Contract fields
