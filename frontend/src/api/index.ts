@@ -56,11 +56,26 @@ export interface Template {
   name: string
   filePath: string
   fieldMap?: string
+  activeFields?: string
   createdAt: string
 }
 
 export const templateApi = {
   list: () => api.get<{ data: Template[] } | Template[]>('/templates'),
+  create: (name: string) => api.post<Template>('/templates', { name }),
+  updateMapping: (id: number, fieldMap: string, activeFields: string) =>
+    api.patch<Template>(`/templates/${id}`, { fieldMap, activeFields }),
+  delete: (id: number) => api.delete<{ message: string }>(`/templates/${id}`),
+  uploadFile: (id: number, file: File, onProgress?: (pct: number) => void) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<Template>(`/templates/${id}/upload`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e: any) => {
+        if (e.total && onProgress) onProgress(Math.round((e.loaded * 100) / e.total))
+      },
+    })
+  },
 }
 
 export const paymentApi = {
