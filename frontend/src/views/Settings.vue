@@ -391,16 +391,27 @@ function insertFieldPlaceholder(templateId: number, fieldName: string, label?: s
 
 function validateJson(templateId: number): boolean {
   const raw = mapping.value[templateId] || ''
-  if (!raw.trim()) { jsonErrors.value[templateId] = ''; return true }
-  // Strip comment lines for validation
+  if (!raw.trim()) { jsonErrors.value[templateId] = '映射不能为空'; return false }
+
+  // Parse active (uncommented) keys
   const uncommented = raw.split('\n').filter(line => !line.trim().startsWith('//')).join('\n')
-  if (!uncommented.trim()) { jsonErrors.value[templateId] = ''; return true }
+  if (!uncommented.trim()) { jsonErrors.value[templateId] = '映射不能为空'; return false }
   try {
     const parsed = JSON.parse(uncommented)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       jsonErrors.value[templateId] = '映射必须是 JSON 对象'
       return false
     }
+
+    // Required field check
+    const activeKeys = Object.keys(parsed)
+    const missingRequired = requiredFieldKeys.filter(k => !activeKeys.includes(k))
+    if (missingRequired.length > 0) {
+      const labels = missingRequired.map(k => presetFieldLabels[k] || k).join('、')
+      jsonErrors.value[templateId] = `缺少必填字段映射: ${labels}`
+      return false
+    }
+
     jsonErrors.value[templateId] = ''
     return true
   } catch (e: any) {
@@ -410,58 +421,24 @@ function validateJson(templateId: number): boolean {
 }
 
 function formatJson(templateId: number) {
-  const raw = mapping.value[templateId] || ''
-  if (!raw.trim()) return
-  const lines = raw.split('\n')
-  const uncommented = lines.filter(line => !line.trim().startsWith('//')).join('\n')
-  if (!uncommented.trim()) return
-  try {
-    const parsed = JSON.parse(uncommented)
-    const formatted = JSON.stringify(parsed, null, 2)
-    // Re-apply comments: find lines that were commented and comment their equivalents
-    const commentedKeys = new Set<string>()
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (trimmed.startsWith('//')) {
-        const keyMatch = trimmed.match(/"([^"]+)"/)
-        if (keyMatch) commentedKeys.add(keyMatch[1])
-      }
+  // Reset to required fields with Chinese labels
+  rebuildJson(templateId, (obj) => {
+    for (const k of requiredFieldKeys) {
+      obj[k] = presetFieldLabels[k] || k
     }
-    if (commentedKeys.size === 0) {
-      mapping.value[templateId] = formatted
-    } else {
-      const fmtLines = formatted.split('\n')
-      const result = fmtLines.map(line => {
-        for (const key of commentedKeys) {
-          if (line.includes(`"${key}"`)) {
-            return line.replace(/^(\s*)/, '$1// ')
-          }
-        }
-        return line
-      })
-      mapping.value[templateId] = result.join('\n')
-    }
-    jsonErrors.value[templateId] = ''
-  } catch (e: any) {
-    jsonErrors.value[templateId] = 'JSON 格式错误: ' + e.message
-  }
+  }, (commented) => {
+    commented.clear()
+  })
+  jsonErrors.value[templateId] = ''
 }
 
 async function saveMapping(t: Template) {
   if (!validateJson(t.id)) return
 
-  // Ensure all required fields are present and active
-  const activeArr = parseUncommentedKeys(mapping.value[t.id] || '')
-  const missingRequired = requiredFieldKeys.filter(k => !activeArr.includes(k))
-  if (missingRequired.length > 0) {
-    const labels = missingRequired.map(k => presetFieldLabels[k] || k).join('、')
-    jsonErrors.value[t.id] = `缺少必填字段映射: ${labels}`
-    return
-  }
-
   saving.value[t.id] = true
   try {
     const fieldMap = mapping.value[t.id] || '{}'
+    const activeArr = parseUncommentedKeys(fieldMap)
     const activeFields = JSON.stringify(activeArr)
     const res = await templateApi.updateMapping(t.id, fieldMap, activeFields)
     if (res.data.filePath) {

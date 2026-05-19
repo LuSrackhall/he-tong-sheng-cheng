@@ -3,9 +3,11 @@ package handler
 import (
 	"asset-leasing-system/internal/docx"
 	"asset-leasing-system/internal/domain"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -199,7 +201,14 @@ func (h *ContractHandler) CreateTemplate(c *gin.Context) {
 	tpl := &domain.Template{
 		Name:     req.Name,
 		FilePath: "", // filled after file upload
-		FieldMap: "{}",
+		FieldMap: `{
+  "contractId": "合同编号",
+  "startDate": "开始日期",
+  "endDate": "结束日期",
+  "monthlyRent": "月租金",
+  "tenantName": "租户姓名",
+  "assetName": "资产名称"
+}`,
 	}
 	if err := h.templateRepo.Create(tpl); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create template"})
@@ -234,6 +243,28 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 	if req.ActiveFields != "" {
 		tpl.ActiveFields = req.ActiveFields
 	}
+
+	// Enforce required fields: all must be present in activeFields
+	requiredFields := []string{"contractId", "startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
+	activeFields := parseActiveFields(tpl.ActiveFields)
+	activeSet := make(map[string]bool)
+	for _, f := range activeFields {
+		activeSet[f] = true
+	}
+	var missingRequired []string
+	for _, f := range requiredFields {
+		if !activeSet[f] {
+			missingRequired = append(missingRequired, f)
+		}
+	}
+	if len(missingRequired) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":           fmt.Sprintf("缺少必填字段映射: %s", strings.Join(missingRequired, "、")),
+			"missingRequired": missingRequired,
+		})
+		return
+	}
+
 	if err := h.templateRepo.Update(tpl); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template mapping"})
 		return
