@@ -135,6 +135,10 @@ const presetFieldLabels: Record<string, string> = {
   today: '今日日期',
 }
 
+// Fields that MUST be present and active for the system to function.
+// These are bound to core form inputs that drive contract generation.
+const requiredFieldKeys = ['contractId', 'startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
+
 function hasFile(t: Template): boolean {
   return !!t.filePath && t.filePath.trim().length > 0
 }
@@ -244,6 +248,8 @@ function isActive(templateId: number, key: string): boolean {
 }
 
 function toggleActive(templateId: number, key: string) {
+  // Prevent disabling required fields
+  if (requiredFieldKeys.includes(key) && isActive(templateId, key)) return
   rebuildJson(templateId, (_obj) => {}, (commented) => {
     if (commented.has(key)) {
       commented.delete(key)
@@ -444,11 +450,18 @@ function formatJson(templateId: number) {
 async function saveMapping(t: Template) {
   if (!validateJson(t.id)) return
 
+  // Ensure all required fields are present and active
+  const activeArr = parseUncommentedKeys(mapping.value[t.id] || '')
+  const missingRequired = requiredFieldKeys.filter(k => !activeArr.includes(k))
+  if (missingRequired.length > 0) {
+    const labels = missingRequired.map(k => presetFieldLabels[k] || k).join('、')
+    jsonErrors.value[t.id] = `缺少必填字段映射: ${labels}`
+    return
+  }
+
   saving.value[t.id] = true
   try {
     const fieldMap = mapping.value[t.id] || '{}'
-    // Derive active fields from uncommented keys in the JSON textarea
-    const activeArr = parseUncommentedKeys(fieldMap)
     const activeFields = JSON.stringify(activeArr)
     const res = await templateApi.updateMapping(t.id, fieldMap, activeFields)
     if (res.data.filePath) {
