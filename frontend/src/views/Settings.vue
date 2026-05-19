@@ -198,37 +198,38 @@ function parseUncommentedKeys(raw: string): string[] {
   }
 }
 
-// Parse JSON (skip comments) to key→label Record
-function parseJsonLabels(templateId: number): Record<string, string> {
-  const raw = mapping.value[templateId] || ''
-  if (!raw.trim()) return {}
-  const uncommentedLines = raw.split('\n').filter(line => !line.trim().startsWith('//'))
-  const cleanedJson = uncommentedLines.join('\n')
-  try {
-    const obj = JSON.parse(cleanedJson)
-    const result: Record<string, string> = {}
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'string') result[key] = value
-    }
-    return result
-  } catch { return {} }
-}
-
-// All fields (preset + custom) for chip rendering
+// All fields (preset + custom) for chip rendering.
+// Custom chips derive from ALL keys in JSON (including commented) so they
+// don't disappear when toggled off.
 function allFieldChips(templateId: number): Array<{ name: string; label: string; isPreset: boolean }> {
-  const jsonLabels = parseJsonLabels(templateId)
   const presetKeys = new Set(presetFieldGroups.flatMap(g => g.fields))
+
+  // Get labels from all keys (commented included) via rebuildJson-style parsing
+  const allLabels: Record<string, string> = {}
+  const raw = mapping.value[templateId] || ''
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const contentLine = trimmed.startsWith('//') ? trimmed.slice(2).trim() : trimmed
+    const kvMatch = contentLine.match(/"([^"]+)"\s*:\s*"([^"]*)"/)
+    if (kvMatch) allLabels[kvMatch[1]] = kvMatch[2]
+  }
+
   const preset = presetFieldGroups.flatMap(g => g.fields.map(f => ({
     name: f,
-    label: jsonLabels[f] || presetFieldLabels[f] || f,
+    label: allLabels[f] || presetFieldLabels[f] || f,
     isPreset: true,
   })))
+
+  const seen = new Set(presetKeys)
   const custom: Array<{ name: string; label: string; isPreset: boolean }> = []
-  for (const [key, value] of Object.entries(jsonLabels)) {
-    if (!presetKeys.has(key)) {
+  for (const [key, value] of Object.entries(allLabels)) {
+    if (!seen.has(key)) {
       custom.push({ name: key, label: value || key, isPreset: false })
+      seen.add(key)
     }
   }
+
   return [...preset, ...custom]
 }
 
@@ -316,21 +317,22 @@ function rebuildJson(
 ) {
   const raw = mapping.value[templateId] || ''
 
+  // Parse ALL lines (including commented) to build the complete object.
+  // This prevents commented keys from being lost when JSON.stringify excludes them.
   const commentedKeys = new Set<string>()
+  const obj: Record<string, string> = {}
   for (const line of raw.split('\n')) {
     const trimmed = line.trim()
-    if (trimmed.startsWith('//')) {
-      const match = trimmed.match(/"([^"]+)"/)
-      if (match) commentedKeys.add(match[1])
+    if (!trimmed) continue
+    const contentLine = trimmed.startsWith('//') ? trimmed.slice(2).trim() : trimmed
+    const kvMatch = contentLine.match(/"([^"]+)"\s*:\s*"([^"]*)"/)
+    if (kvMatch) {
+      obj[kvMatch[1]] = kvMatch[2]
+      if (trimmed.startsWith('//')) {
+        commentedKeys.add(kvMatch[1])
+      }
     }
   }
-
-  const uncommentedLines = raw.split('\n').filter(l => !l.trim().startsWith('//'))
-  const cleanedJson = uncommentedLines.join('\n')
-  let obj: Record<string, string> = {}
-  try {
-    if (cleanedJson.trim()) obj = JSON.parse(cleanedJson)
-  } catch { /* keep empty */ }
 
   modifyObj(obj)
   if (modifyComments) modifyComments(commentedKeys)
@@ -341,10 +343,10 @@ function rebuildJson(
   } else {
     const fmtLines = formatted.split('\n')
     const result = fmtLines.map(line => {
-      for (const ck of commentedKeys) {
-        if (line.includes(`"${ck}"`)) {
-          return line.replace(/^(\s*)/, '$1// ')
-        }
+      // Use precise key extraction to avoid substring false matches
+      const keyMatch = line.match(/^\s*"([^"]+)"/)
+      if (keyMatch && commentedKeys.has(keyMatch[1])) {
+        return line.replace(/^(\s*)/, '$1// ')
       }
       return line
     })
