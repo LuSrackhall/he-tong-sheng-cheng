@@ -343,14 +343,30 @@ function rebuildJson(
   } else {
     const fmtLines = formatted.split('\n')
     const result = fmtLines.map(line => {
-      // Use precise key extraction to avoid substring false matches
       const keyMatch = line.match(/^\s*"([^"]+)"/)
       if (keyMatch && commentedKeys.has(keyMatch[1])) {
         return line.replace(/^(\s*)/, '$1// ')
       }
       return line
     })
-    mapping.value[templateId] = result.join('\n')
+    // Remove trailing commas when the next effective line is "}"
+    // (happens when the last property is commented out)
+    const cleaned: string[] = []
+    for (let i = 0; i < result.length; i++) {
+      let line = result[i]
+      if (line.trim().endsWith(',')) {
+        let nextIsCloseBrace = false
+        for (let j = i + 1; j < result.length; j++) {
+          const nt = result[j].trim()
+          if (!nt || nt.startsWith('//')) continue
+          if (nt === '}') { nextIsCloseBrace = true; break }
+          break
+        }
+        if (nextIsCloseBrace) line = line.replace(/,\s*$/, '')
+      }
+      cleaned.push(line)
+    }
+    mapping.value[templateId] = cleaned.join('\n')
   }
 }
 
