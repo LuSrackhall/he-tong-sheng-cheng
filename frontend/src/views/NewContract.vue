@@ -25,7 +25,7 @@ function parseActiveFieldsArray(raw: string): string[] {
 
 function isTemplateUsable(t: Template): boolean {
   if (!t.validated || !t.filePath) return false
-  const activeArr = parseActiveFieldsArray(t.activeFields)
+  const activeArr = parseActiveFieldsArray(t.activeFields || '')
   const activeSet = new Set(activeArr)
   return requiredFieldKeys.every(k => activeSet.has(k))
 }
