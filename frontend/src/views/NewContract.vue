@@ -13,6 +13,23 @@ const templates = ref<Template[]>([])
 const selectedTemplate = ref<Template | null>(null)
 const loadingTemplates = ref(false)
 
+const requiredFieldKeys = ['contractId', 'startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
+
+function parseActiveFieldsArray(raw: string): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr : []
+  } catch { return [] }
+}
+
+function isTemplateUsable(t: Template): boolean {
+  if (!t.validated || !t.filePath) return false
+  const activeArr = parseActiveFieldsArray(t.activeFields)
+  const activeSet = new Set(activeArr)
+  return requiredFieldKeys.every(k => activeSet.has(k))
+}
+
 // Step 1: assets
 const assetSearch = ref('')
 const assets = ref<Asset[]>([])
@@ -89,10 +106,18 @@ watch([contractStartDate, contractEndDate, contractMonthlyRent], () => {
   contractTotalReceivable.value = Math.round(total * 100) / 100
 })
 
-// Auto-select single template
+// Auto-select single template (only if usable)
 watch(templates, (list) => {
   if (list.length === 1 && step.value === 0) {
-    selectedTemplate.value = list[0]
+    const t = list[0]
+    if (isTemplateUsable(t)) {
+      selectedTemplate.value = t
+    }
+  }
+  // Also auto-select if only one usable template
+  const usable = list.filter(t => isTemplateUsable(t))
+  if (usable.length === 1 && step.value === 0 && !selectedTemplate.value) {
+    selectedTemplate.value = usable[0]
   }
 })
 
@@ -140,6 +165,7 @@ async function searchTenants() {
 
 // ---- step navigation ----
 function selectTemplate(t: Template) {
+  if (!isTemplateUsable(t)) return
   selectedTemplate.value = t
 }
 
@@ -381,8 +407,11 @@ onMounted(fetchTemplates)
           v-for="t in templates"
           :key="t.id"
           class="card"
-          style="padding: 14px 16px; cursor: pointer; transition: all var(--transition-fast);"
           :style="{
+            padding: '14px 16px',
+            cursor: isTemplateUsable(t) ? 'pointer' : 'not-allowed',
+            opacity: isTemplateUsable(t) ? 1 : 0.55,
+            transition: 'all var(--transition-fast)',
             borderColor: selectedTemplate?.id === t.id ? 'var(--color-primary)' : '',
             boxShadow: selectedTemplate?.id === t.id ? '0 0 0 2px rgba(0,122,255,0.2)' : '',
           }"
@@ -391,13 +420,15 @@ onMounted(fetchTemplates)
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
               <div style="font-weight: 600;">{{ t.name }}</div>
-              <div style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 2px;">{{ t.filePath }}</div>
+              <div style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 2px;">{{ t.filePath || '未上传文件' }}</div>
+              <div v-if="!isTemplateUsable(t)" style="font-size: 0.75rem; color: var(--color-danger); margin-top: 2px;">
+                {{ !t.filePath ? '未上传 Word 文件' : !t.validated ? 'Word 校验未通过' : '缺少必填字段映射' }}
+              </div>
             </div>
             <span
-              class="badge"
-              :class="t.fieldMap ? 'badge-success' : 'badge-warning'"
+              :class="['badge', isTemplateUsable(t) ? 'badge-success' : 'badge-danger']"
             >
-              {{ t.fieldMap ? '已映射' : '未映射' }}
+              {{ isTemplateUsable(t) ? '可用' : '暂不可用' }}
             </span>
           </div>
         </div>

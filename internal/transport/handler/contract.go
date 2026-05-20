@@ -91,6 +91,37 @@ func (h *ContractHandler) Create(c *gin.Context) {
 		req.TotalReceivable = float64(wholeMonths)*req.MonthlyRent + float64(remainingDays)*dailyRate
 	}
 
+	if req.TemplateID != nil && *req.TemplateID != 0 {
+		tpl, err := h.templateRepo.GetByID(*req.TemplateID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Assigned template not found"})
+			return
+		}
+		if !tpl.Validated {
+			c.JSON(http.StatusConflict, gin.H{"error": "所选模板暂不可用：Word 文件校验未通过"})
+			return
+		}
+		requiredFields := []string{"contractId", "startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
+		activeFields := parseActiveFields(tpl.ActiveFields)
+		activeSet := make(map[string]bool)
+		for _, f := range activeFields {
+			activeSet[f] = true
+		}
+		var missingRequired []string
+		for _, f := range requiredFields {
+			if !activeSet[f] {
+				missingRequired = append(missingRequired, f)
+			}
+		}
+		if len(missingRequired) > 0 {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":           fmt.Sprintf("所选模板暂不可用：缺少必填字段映射 %s", strings.Join(missingRequired, "、")),
+				"missingRequired": missingRequired,
+			})
+			return
+		}
+	}
+
 	contract := &domain.Contract{
 		AssetID:         req.AssetID,
 		TenantID:        req.TenantID,
