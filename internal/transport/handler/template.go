@@ -130,7 +130,28 @@ func (h *ContractHandler) ExportContract(c *gin.Context) {
 	}
 
 	if !tpl.Validated {
-		c.JSON(http.StatusConflict, gin.H{"error": "模板校验未通过，请先上传符合要求的 Word 文件"})
+		c.JSON(http.StatusConflict, gin.H{"error": "模板暂不可用：Word 文件校验未通过，请重新上传符合要求的 Word 文件"})
+		return
+	}
+
+	// Check required active fields
+	requiredFields := []string{"contractId", "startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
+	activeFields := parseActiveFields(tpl.ActiveFields)
+	activeSet := make(map[string]bool)
+	for _, f := range activeFields {
+		activeSet[f] = true
+	}
+	var missingRequired []string
+	for _, f := range requiredFields {
+		if !activeSet[f] {
+			missingRequired = append(missingRequired, f)
+		}
+	}
+	if len(missingRequired) > 0 {
+		c.JSON(http.StatusConflict, gin.H{
+			"error":           fmt.Sprintf("模板暂不可用：缺少必填字段映射 %s，请在字段映射配置中启用", strings.Join(missingRequired, "、")),
+			"missingRequired": missingRequired,
+		})
 		return
 	}
 

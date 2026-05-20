@@ -139,6 +139,37 @@ const presetFieldLabels: Record<string, string> = {
 // These are bound to core form inputs that drive contract generation.
 const requiredFieldKeys = ['contractId', 'startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
 
+function isTemplateUsable(t: Template): boolean {
+  // Word validation must pass AND all required fields must be active
+  if (!t.validated || !t.filePath) return false
+  const activeArr = t.activeFields ? parseActiveFieldsArray(t.activeFields) : parseUncommentedKeys(mapping.value[t.id] || '')
+  const activeSet = new Set(activeArr)
+  return requiredFieldKeys.every(k => activeSet.has(k))
+}
+
+function templateUnusableReason(t: Template): string {
+  if (!t.filePath) return '尚未上传 Word 模板文件'
+  if (!t.validated) return 'Word 文件校验未通过，请重新上传符合要求的文件'
+  const activeArr = t.activeFields ? parseActiveFieldsArray(t.activeFields) : parseUncommentedKeys(mapping.value[t.id] || '')
+  const activeSet = new Set(activeArr)
+  const missing = requiredFieldKeys.filter(k => !activeSet.has(k))
+  if (missing.length > 0) {
+    const labels = missing.map(k => presetFieldLabels[k] || k).join('、')
+    return `缺少必填字段映射: ${labels}`
+  }
+  return ''
+}
+
+function parseActiveFieldsArray(raw: string): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
 function hasFile(t: Template): boolean {
   return !!t.filePath && t.filePath.trim().length > 0
 }
@@ -504,8 +535,11 @@ onMounted(fetchTemplates)
             <span :class="['file-badge', hasFile(t) ? 'file-ok' : 'file-missing']">
               {{ hasFile(t) ? '文件已上传' : '未上传文件' }}
             </span>
-            <span v-if="t.filePath" :class="['badge-validated', t.validated ? 'badge-ok' : 'badge-fail']">
-              {{ t.validated ? '校验通过' : '校验未通过' }}
+            <span v-if="t.filePath && hasFile(t)" :class="['badge-validated', isTemplateUsable(t) ? 'badge-ok' : 'badge-fail']">
+              {{ isTemplateUsable(t) ? '可用' : '暂不可用' }}
+            </span>
+            <span v-if="t.filePath && hasFile(t) && !isTemplateUsable(t)" class="unusable-hint">
+              {{ templateUnusableReason(t) }}
             </span>
             <button
               class="btn-delete-template"
@@ -859,6 +893,16 @@ onMounted(fetchTemplates)
   background: rgba(255,59,48,0.06);
 }
 .btn-delete-template:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.unusable-hint {
+  font-size: 0.75rem;
+  color: var(--color-danger);
+  margin-left: 8px;
+  background: rgba(255,59,48,0.06);
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,59,48,0.15);
+}
 
 /* Custom field */
 .btn-add-custom {
