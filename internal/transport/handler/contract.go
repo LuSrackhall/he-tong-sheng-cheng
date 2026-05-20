@@ -101,7 +101,7 @@ func (h *ContractHandler) Create(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "所选模板暂不可用：Word 文件校验未通过"})
 			return
 		}
-		requiredFields := []string{"contractId", "startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
+		requiredFields := []string{"startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
 		activeFields := parseActiveFields(tpl.ActiveFields)
 		activeSet := make(map[string]bool)
 		for _, f := range activeFields {
@@ -276,7 +276,7 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 	}
 
 	// Enforce required fields: all must be present in activeFields
-	requiredFields := []string{"contractId", "startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
+	requiredFields := []string{"startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
 	activeFields := parseActiveFields(tpl.ActiveFields)
 	activeSet := make(map[string]bool)
 	for _, f := range activeFields {

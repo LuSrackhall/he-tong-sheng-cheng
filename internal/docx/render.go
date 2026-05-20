@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 )
 
@@ -59,12 +60,20 @@ func copyZipFile(file *zip.File, writer *zip.Writer, values map[string]string) e
 	return err
 }
 
+var placeholderRe = regexp.MustCompile(`\$\{([^}]*)\}`)
+var stripTagsRe = regexp.MustCompile(`<[^>]+>`)
+
 func replacePlaceholders(content []byte, values map[string]string) []byte {
 	s := string(content)
-	for key, val := range values {
-		placeholder := "${" + key + "}"
-		s = strings.ReplaceAll(s, placeholder, xmlEscape(val))
-	}
+	s = placeholderRe.ReplaceAllStringFunc(s, func(match string) string {
+		// Extract key from ${...} and strip any XML tags that Word may have inserted
+		inner := match[2 : len(match)-1]
+		key := stripTagsRe.ReplaceAllString(inner, "")
+		if val, ok := values[key]; ok {
+			return xmlEscape(val)
+		}
+		return match
+	})
 	return []byte(s)
 }
 

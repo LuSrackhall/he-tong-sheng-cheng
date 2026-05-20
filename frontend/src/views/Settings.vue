@@ -135,9 +135,8 @@ const presetFieldLabels: Record<string, string> = {
   today: '今日日期',
 }
 
-// Fields that MUST be present and active for the system to function.
 // These are bound to core form inputs that drive contract generation.
-const requiredFieldKeys = ['contractId', 'startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
+const requiredFieldKeys = ['startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
 
 function isTemplateUsable(t: Template): boolean {
   // Word validation must pass AND all required fields must be active

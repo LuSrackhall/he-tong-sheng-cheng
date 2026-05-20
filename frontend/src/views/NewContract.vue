@@ -13,7 +13,7 @@ const templates = ref<Template[]>([])
 const selectedTemplate = ref<Template | null>(null)
 const loadingTemplates = ref(false)
 
-const requiredFieldKeys = ['contractId', 'startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
+const requiredFieldKeys = ['startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
 
 function parseActiveFieldsArray(raw: string): string[] {
   if (!raw) return []
@@ -618,6 +618,20 @@ onMounted(fetchTemplates)
       </div>
 
       <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
+
+      <!-- Auto-generated contract ID (read-only, shown when template maps it) -->
+      <div v-if="selectedTemplate && parseActiveFieldsArray(selectedTemplate.activeFields || '').includes('contractId')" class="form-group">
+        <label class="label">合同编号</label>
+        <input
+          class="input"
+          :value="selectedTemplate ? '将在创建后自动生成' : ''"
+          disabled
+          style="background: var(--color-bg); color: var(--color-text-secondary); cursor: not-allowed;"
+        />
+        <p style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">
+          合同编号为系统自动生成的唯一标识，创建后即可在预览中查看
+        </p>
+      </div>
 
       <!-- Dates -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">

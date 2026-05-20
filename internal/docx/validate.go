@@ -33,10 +33,19 @@ func ValidatePlaceholders(templateData []byte, fields []string) ([]string, error
 	}
 
 	xmlStr := allXMLContent.String()
+
+	// Extract all placeholder keys found in the document (strip XML tags from captured groups)
+	foundKeys := make(map[string]bool)
+	for _, m := range placeholderRe.FindAllStringSubmatch(xmlStr, -1) {
+		key := stripTagsRe.ReplaceAllString(m[1], "")
+		if key != "" {
+			foundKeys[key] = true
+		}
+	}
+
 	var missing []string
 	for _, field := range fields {
-		placeholder := "${" + field + "}"
-		if !strings.Contains(xmlStr, placeholder) {
+		if !foundKeys[field] {
 			missing = append(missing, field)
 		}
 	}

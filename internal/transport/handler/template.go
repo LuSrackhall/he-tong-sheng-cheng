@@ -135,7 +135,7 @@ func (h *ContractHandler) ExportContract(c *gin.Context) {
 	}
 
 	// Check required active fields
-	requiredFields := []string{"contractId", "startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
+	requiredFields := []string{"startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
 	activeFields := parseActiveFields(tpl.ActiveFields)
 	activeSet := make(map[string]bool)
 	for _, f := range activeFields {
