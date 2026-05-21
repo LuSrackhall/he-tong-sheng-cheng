@@ -60,7 +60,7 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 	// Validate placeholders against active fields
 	activeFields := parseActiveFields(tpl.ActiveFields)
 	if len(activeFields) > 0 {
-		missing, err := docx.ValidatePlaceholders(fileData, activeFields)
+		missing, err := docx.ValidatePlaceholders(fileData, validateFields(activeFields))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse docx: " + err.Error()})
 			return
@@ -138,8 +138,8 @@ func (h *ContractHandler) ExportContract(c *gin.Context) {
 	requiredFields := []string{"startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
 	activeFields := parseActiveFields(tpl.ActiveFields)
 	activeSet := make(map[string]bool)
-	for _, f := range activeFields {
-		activeSet[f] = true
+	for k := range activeFields {
+		activeSet[k] = true
 	}
 	var missingRequired []string
 	for _, f := range requiredFields {
@@ -216,16 +216,75 @@ func (h *ContractHandler) DownloadContract(c *gin.Context) {
 	c.File(exportPath)
 }
 
-// parseActiveFields parses the JSON array of active field keys.
-func parseActiveFields(raw string) []string {
+// parseActiveFields parses the JSON active fields.
+// Supports both legacy []string format (converted to map with true values)
+// and new Record<string, boolean> format.
+func parseActiveFields(raw string) map[string]bool {
+	if raw == "" || raw == "null" {
+		return nil
+	}
+	raw = strings.TrimSpace(raw)
+	if raw[0] == '[' {
+		var arr []string
+		if err := json.Unmarshal([]byte(raw), &arr); err != nil {
+			return nil
+		}
+		result := make(map[string]bool, len(arr))
+		for _, k := range arr {
+			result[k] = true
+		}
+		return result
+	}
+	var obj map[string]bool
+	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+		return nil
+	}
+	return obj
+}
+
+// activeFieldKeys returns the keys from the activeFields map.
+func activeFieldKeys(raw string) []string {
+	m := parseActiveFields(raw)
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// validateFields returns the keys from activeFields that have value true.
+func validateFields(activeFields map[string]bool) []string {
+	var result []string
+	for k, v := range activeFields {
+		if v {
+			result = append(result, k)
+		}
+	}
+	return result
+}
+
+// parseUncommentedFieldMapKeys parses the fieldMap JSON text, stripping
+// comment-prefixed lines (//), and returns the keys of the remaining fields.
+func parseUncommentedFieldMapKeys(raw string) []string {
 	if raw == "" {
 		return nil
 	}
-	var fields []string
-	if err := json.Unmarshal([]byte(raw), &fields); err != nil {
+	fieldMap := make(map[string]string)
+	uncommented := strings.Builder{}
+	for _, line := range strings.Split(raw, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "//") {
+			uncommented.WriteString(line + "\n")
+		}
+	}
+	if err := json.Unmarshal([]byte(uncommented.String()), &fieldMap); err != nil {
 		return nil
 	}
-	return fields
+	keys := make([]string, 0, len(fieldMap))
+	for k := range fieldMap {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // DeleteTemplate handles DELETE /api/templates/:id
@@ -282,6 +341,7 @@ func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[str
 	values["startDate"] = contract.StartDate.Format("2006-01-02")
 	values["endDate"] = contract.EndDate.Format("2006-01-02")
 	values["monthlyRent"] = fmt.Sprintf("%.2f", contract.MonthlyRent)
+	values["yearlyRent"] = fmt.Sprintf("%.2f", contract.MonthlyRent*12)
 	values["totalReceivable"] = fmt.Sprintf("%.2f", contract.TotalReceivable)
 	values["totalReceived"] = fmt.Sprintf("%.2f", contract.TotalReceived)
 	values["deposit"] = fmt.Sprintf("%.2f", contract.Deposit)

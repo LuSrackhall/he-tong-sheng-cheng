@@ -100,7 +100,7 @@ const uploadErrors = ref<Record<number, { msg: string; missingFields?: string[] 
 const presetFieldGroups = [
   {
     category: '合同类',
-    fields: ['contractId', 'startDate', 'endDate', 'monthlyRent', 'totalReceivable', 'totalReceived', 'deposit', 'status', 'notes'],
+    fields: ['contractId', 'startDate', 'endDate', 'monthlyRent', 'yearlyRent', 'totalReceivable', 'totalReceived', 'deposit', 'status', 'notes'],
   },
   {
     category: '资产类',
@@ -121,6 +121,7 @@ const presetFieldLabels: Record<string, string> = {
   startDate: '开始日期',
   endDate: '结束日期',
   monthlyRent: '月租金',
+  yearlyRent: '年租金',
   totalReceivable: '应收总额',
   totalReceived: '已收总额',
   deposit: '押金',
@@ -141,17 +142,15 @@ const requiredFieldKeys = ['startDate', 'endDate', 'monthlyRent', 'tenantName', 
 function isTemplateUsable(t: Template): boolean {
   // Word validation must pass AND all required fields must be active
   if (!t.validated || !t.filePath) return false
-  const activeArr = t.activeFields ? parseActiveFieldsArray(t.activeFields) : parseUncommentedKeys(mapping.value[t.id] || '')
-  const activeSet = new Set(activeArr)
-  return requiredFieldKeys.every(k => activeSet.has(k))
+  const activeMap = parseActiveFieldsArray(t.activeFields)
+  return requiredFieldKeys.every(k => activeMap[k] === true)
 }
 
 function templateUnusableReason(t: Template): string {
   if (!t.filePath) return '尚未上传 Word 模板文件'
   if (!t.validated) return 'Word 文件校验未通过，请重新上传符合要求的文件'
-  const activeArr = t.activeFields ? parseActiveFieldsArray(t.activeFields) : parseUncommentedKeys(mapping.value[t.id] || '')
-  const activeSet = new Set(activeArr)
-  const missing = requiredFieldKeys.filter(k => !activeSet.has(k))
+  const activeMap = parseActiveFieldsArray(t.activeFields)
+  const missing = requiredFieldKeys.filter(k => activeMap[k] !== true)
   if (missing.length > 0) {
     const labels = missing.map(k => presetFieldLabels[k] || k).join('、')
     return `缺少必填字段映射: ${labels}`
@@ -159,13 +158,29 @@ function templateUnusableReason(t: Template): string {
   return ''
 }
 
-function parseActiveFieldsArray(raw: string): string[] {
-  if (!raw) return []
+function parseActiveFieldsArray(raw: string): Record<string, boolean> {
+  if (!raw) return {}
   try {
-    const arr = JSON.parse(raw)
-    return Array.isArray(arr) ? arr : []
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      // Legacy format: convert []string to Record<string, boolean>
+      const obj: Record<string, boolean> = {}
+      for (const k of parsed) {
+        if (typeof k === 'string') obj[k] = true
+      }
+      return obj
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      // New format: Record<string, boolean>
+      const obj: Record<string, boolean> = {}
+      for (const [k, v] of Object.entries(parsed)) {
+        obj[k] = !!v
+      }
+      return obj
+    }
+    return {}
   } catch {
-    return []
+    return {}
   }
 }
 
@@ -197,6 +212,8 @@ async function fetchTemplates() {
       if (!mapping.value[t.id]) {
         mapping.value[t.id] = t.fieldMap || '{}'
       }
+      // Sync activeFields state from backend
+      syncActiveFieldsFromTemplate(t)
     })
   } catch { /* handled by interceptor */ }
 }
@@ -267,26 +284,34 @@ function allFieldChips(templateId: number): Array<{ name: string; label: string;
   return [...preset, ...custom]
 }
 
-function isActive(templateId: number, key: string): boolean {
-  const raw = mapping.value[templateId] || ''
-  for (const line of raw.split('\n')) {
-    if (line.includes(`"${key}"`)) {
-      return !line.trim().startsWith('//')
-    }
+// Per-template activeFields state (synced from backend, editable locally)
+const activeFieldsState = ref<Record<number, Record<string, boolean>>>({})
+
+function getActiveFields(templateId: number): Record<string, boolean> {
+  if (!activeFieldsState.value[templateId]) {
+    activeFieldsState.value[templateId] = {}
   }
-  return false
+  return activeFieldsState.value[templateId]
+}
+
+function syncActiveFieldsFromTemplate(t: Template) {
+  activeFieldsState.value[t.id] = parseActiveFieldsArray(t.activeFields)
+}
+
+function isActive(templateId: number, key: string): boolean {
+  const map = getActiveFields(templateId)
+  return key in map && map[key] === true
 }
 
 function toggleActive(templateId: number, key: string) {
   // Prevent disabling required fields
   if (requiredFieldKeys.includes(key) && isActive(templateId, key)) return
-  rebuildJson(templateId, (_obj) => {}, (commented) => {
-    if (commented.has(key)) {
-      commented.delete(key)
-    } else {
-      commented.add(key)
-    }
-  })
+  const map = getActiveFields(templateId)
+  if (map[key]) {
+    delete map[key]
+  } else {
+    map[key] = true
+  }
 }
 
 // Template creation
@@ -416,6 +441,13 @@ function insertFieldPlaceholder(templateId: number, fieldName: string, label?: s
       obj[fieldName] = displayLabel
     }
   })
+  // Sync activeFieldsState: add new field with default true, remove deleted field
+  const afMap = getActiveFields(templateId)
+  if (fieldName in afMap) {
+    delete afMap[fieldName]
+  } else {
+    afMap[fieldName] = true
+  }
   jsonErrors.value[templateId] = ''
 }
 
@@ -459,6 +491,10 @@ function formatJson(templateId: number) {
   }, (commented) => {
     commented.clear()
   })
+  // Reset activeFields to object format with all uncommented keys = true
+  const afMap = getActiveFields(templateId)
+  for (const k of Object.keys(afMap)) delete afMap[k]
+  for (const k of requiredFieldKeys) afMap[k] = true
   jsonErrors.value[templateId] = ''
 }
 
@@ -468,8 +504,18 @@ async function saveMapping(t: Template) {
   saving.value[t.id] = true
   try {
     const fieldMap = mapping.value[t.id] || '{}'
-    const activeArr = parseUncommentedKeys(fieldMap)
-    const activeFields = JSON.stringify(activeArr)
+    // Sync activeFields from fieldMap uncommented keys, preserving existing flags
+    const uncommentedKeys = parseUncommentedKeys(fieldMap)
+    const afMap = getActiveFields(t.id)
+    // Add new uncommented keys with default true
+    for (const k of uncommentedKeys) {
+      if (!(k in afMap)) afMap[k] = true
+    }
+    // Remove keys no longer in fieldMap
+    for (const k of Object.keys(afMap)) {
+      if (!uncommentedKeys.includes(k)) delete afMap[k]
+    }
+    const activeFields = JSON.stringify(afMap)
     const res = await templateApi.updateMapping(t.id, fieldMap, activeFields)
     if (res.data.filePath) {
       if (res.data.validated) {
@@ -662,10 +708,22 @@ onMounted(fetchTemplates)
             placeholder='{"assetName": "资产名称", "tenantName": "租户姓名"}'
           />
 
-          <!-- Active fields summary -->
-          <div v-if="parseUncommentedKeys(mapping[t.id] || '').length" class="active-summary">
-            <span class="active-label">已启用字段（{{ parseUncommentedKeys(mapping[t.id] || '').length }}）：</span>
-            <code v-for="f in parseUncommentedKeys(mapping[t.id] || '')" :key="f" class="active-tag">${{ '{' + f + '}' }}</code>
+          <!-- Active fields summary with validation toggles -->
+          <div v-if="Object.keys(getActiveFields(t.id)).length" class="active-summary">
+            <span class="active-label">已启用字段（{{ Object.keys(getActiveFields(t.id)).length }}）：</span>
+            <span
+              v-for="(val, f) in getActiveFields(t.id)"
+              :key="f"
+              :class="['active-chip', val ? 'chip-validate-on' : 'chip-validate-off']"
+            >
+              <code class="active-tag">${{ '{' + f + '}' }}</code>
+              <button
+                class="validate-toggle"
+                type="button"
+                @click="getActiveFields(t.id)[f] = !val"
+                :title="val ? '校验已启用，点击关闭' : '校验已关闭，点击启用'"
+              >{{ val ? '✓校验' : '✗不校验' }}</button>
+            </span>
           </div>
           <div v-else class="active-summary empty">
             暂未启用任何映射字段，请先在映射中添加字段并开启开关
@@ -856,10 +914,21 @@ onMounted(fetchTemplates)
 .mapping-textarea { font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.6; resize: vertical; min-height: 80px; }
 
 /* Active summary */
-.active-summary { margin-top: 8px; font-size: 0.75rem; color: var(--color-text-secondary); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.active-summary { margin-top: 8px; font-size: 0.75rem; color: var(--color-text-secondary); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .active-summary.empty { color: var(--color-text-tertiary); font-style: italic; }
 .active-label { margin-right: 4px; }
-.active-tag { font-family: var(--font-mono); font-size: 0.7rem; background: rgba(0,122,255,0.08); padding: 1px 6px; border-radius: 8px; color: var(--color-primary); }
+.active-chip { display: inline-flex; align-items: center; border-radius: 14px; overflow: hidden; border: 1px solid var(--color-border); }
+.active-chip.chip-validate-on { background: rgba(52,199,89,0.06); border-color: rgba(52,199,89,0.25); }
+.active-chip.chip-validate-off { background: rgba(0,0,0,0.03); border-color: var(--color-border); }
+.active-tag { font-family: var(--font-mono); font-size: 0.7rem; padding: 2px 8px; color: var(--color-primary); }
+.validate-toggle {
+  padding: 2px 8px; border: none; border-left: 1px solid var(--color-border);
+  background: transparent; font-size: 0.65rem; cursor: pointer;
+  white-space: nowrap;
+}
+.chip-validate-on .validate-toggle { color: var(--color-success); }
+.chip-validate-off .validate-toggle { color: var(--color-text-tertiary); }
+.validate-toggle:hover { background: rgba(0,0,0,0.04); }
 
 /* JSON error */
 .json-error { color: var(--color-danger); font-size: 0.75rem; margin-top: 6px; }

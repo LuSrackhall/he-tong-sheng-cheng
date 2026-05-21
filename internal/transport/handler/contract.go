@@ -3,6 +3,7 @@ package handler
 import (
 	"asset-leasing-system/internal/docx"
 	"asset-leasing-system/internal/domain"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -104,8 +105,8 @@ func (h *ContractHandler) Create(c *gin.Context) {
 		requiredFields := []string{"startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
 		activeFields := parseActiveFields(tpl.ActiveFields)
 		activeSet := make(map[string]bool)
-		for _, f := range activeFields {
-			activeSet[f] = true
+		for k := range activeFields {
+			activeSet[k] = true
 		}
 		var missingRequired []string
 		for _, f := range requiredFields {
@@ -237,8 +238,17 @@ func (h *ContractHandler) CreateTemplate(c *gin.Context) {
   "startDate": "开始日期",
   "endDate": "结束日期",
   "monthlyRent": "月租金",
+  "yearlyRent": "年租金",
   "tenantName": "租户姓名",
   "assetName": "资产名称"
+}`,
+		ActiveFields: `{
+  "startDate": true,
+  "endDate": true,
+  "monthlyRent": true,
+  "yearlyRent": true,
+  "tenantName": true,
+  "assetName": true
 }`,
 	}
 	if err := h.templateRepo.Create(tpl); err != nil {
@@ -275,12 +285,27 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 		tpl.ActiveFields = req.ActiveFields
 	}
 
+	// Auto-sync activeFields from fieldMap: add new uncommented keys with default true
+	activeMap := parseActiveFields(tpl.ActiveFields)
+	if activeMap == nil {
+		activeMap = make(map[string]bool)
+	}
+	uncommentedKeys := parseUncommentedFieldMapKeys(tpl.FieldMap)
+	for _, k := range uncommentedKeys {
+		if _, exists := activeMap[k]; !exists {
+			activeMap[k] = true
+		}
+	}
+	// Serialize synced activeFields
+	activeBytes, _ := json.Marshal(activeMap)
+	tpl.ActiveFields = string(activeBytes)
+
 	// Enforce required fields: all must be present in activeFields
 	requiredFields := []string{"startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
-	activeFields := parseActiveFields(tpl.ActiveFields)
+	activeKeys := activeFieldKeys(tpl.ActiveFields)
 	activeSet := make(map[string]bool)
-	for _, f := range activeFields {
-		activeSet[f] = true
+	for _, k := range activeKeys {
+		activeSet[k] = true
 	}
 	var missingRequired []string
 	for _, f := range requiredFields {
@@ -307,9 +332,16 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 		if err != nil {
 			tpl.Validated = false
 		} else {
-			activeFields := parseActiveFields(tpl.ActiveFields)
-			if len(activeFields) > 0 {
-				missing, err := docx.ValidatePlaceholders(fileData, activeFields)
+			activeMap := parseActiveFields(tpl.ActiveFields)
+			// Collect only fields with validate=true
+			var validateFields []string
+			for k, v := range activeMap {
+				if v {
+					validateFields = append(validateFields, k)
+				}
+			}
+			if len(validateFields) > 0 {
+				missing, err := docx.ValidatePlaceholders(fileData, validateFields)
 				if err != nil {
 					tpl.Validated = false
 				} else {

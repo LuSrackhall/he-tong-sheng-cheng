@@ -1,23 +1,4 @@
-# template-field-management Specification
-
-## Purpose
-TBD - created by archiving change improve-template-management. Update Purpose after archive.
-## Requirements
-### Requirement: Custom Field Addition
-
-The system SHALL allow users to add custom mapping fields with a field name and display label via the template settings UI.
-
-#### Scenario: User adds a custom field
-- **WHEN** the user clicks the "添加自定义字段" button, enters a unique field name and display label, and confirms
-- **THEN** the field is added to the `fieldMap` JSON as `{"fieldName": "displayLabel"}`, appended to the preset field list in the UI, and the field is automatically added to `activeFields`
-
-#### Scenario: Duplicate field name is rejected
-- **WHEN** the user attempts to add a custom field whose name already exists in the preset or custom fields
-- **THEN** the system displays a validation error indicating the field name already exists, and the field is not added
-
-#### Scenario: Empty field name or label is rejected
-- **WHEN** the user submits the custom field form with an empty field name or display label
-- **THEN** the system displays a validation error and the field is not added
+## MODIFIED Requirements
 
 ### Requirement: Auto-Enable on Field Addition
 
@@ -51,35 +32,7 @@ The system SHALL validate that fields with `activeFields[key] === true` have cor
 - **WHEN** a Word document is uploaded, a field is not in `activeFields`, and that field's placeholder is missing from the document
 - **THEN** the upload succeeds because disabled fields are not validated
 
-### Requirement: Field Label Display
-
-The system SHALL display both the placeholder name and its human-readable label in the template field mapping UI.
-
-#### Scenario: Field labels are shown alongside placeholders
-- **WHEN** the user views the field mapping section of a template
-- **THEN** each field is displayed as `${fieldName} → 显示标签` (e.g., `${tenantName} → 租户姓名`), using the label from `fieldMap`
-
-#### Scenario: Fields without labels fall back to field name
-- **WHEN** a field in `fieldMap` has no display label (empty string value)
-- **THEN** the UI displays only `${fieldName}` without the arrow or label
-
-### Requirement: Re-validation on Mapping Update
-
-The system SHALL re-validate the existing Word file against the new active fields whenever field mapping or active fields are updated, and update the template's validation status accordingly.
-
-#### Scenario: Mapping update with existing file passes validation
-- **WHEN** the user updates `fieldMap` or `activeFields`, a Word file has already been uploaded, and all new active fields are present in the document
-- **THEN** the mapping is saved and the template's `validated` status is set to `true`
-
-#### Scenario: Mapping update with existing file fails validation
-- **WHEN** the user updates `fieldMap` or `activeFields`, a Word file has already been uploaded, and one or more new active fields are missing from the document
-- **THEN** the mapping is saved successfully (not blocked), but the template's `validated` status is set to `false`
-
-#### Scenario: Mapping update with no uploaded file
-- **WHEN** the user updates `fieldMap` or `activeFields` and no Word file has been uploaded yet
-- **THEN** the mapping is saved and `validated` remains `false` without attempting validation
-
----
+## ADDED Requirements
 
 ### Requirement: activeFields data format
 
@@ -120,4 +73,3 @@ The system SHALL include `yearlyRent` in the "合同类" preset field group alon
 #### Scenario: yearlyRent can be added to mapping
 - **WHEN** the user clicks the `yearlyRent` preset chip
 - **THEN** it is added to fieldMap as `"yearlyRent": "年租金"` and to activeFields as `"yearlyRent": true`
-

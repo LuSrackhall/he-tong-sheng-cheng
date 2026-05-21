@@ -1,8 +1,5 @@
-# template-validation-status Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change fix-template-validation-on-mapping-update. Update Purpose after archive.
-## Requirements
 ### Requirement: Validation on Word Upload
 
 The system SHALL validate fields with `activeFields[key] === true` against Word document placeholders when a .docx file is uploaded, and persist the validation result to the Template record. Fields with `activeFields[key] === false` SHALL be skipped during validation.
@@ -58,16 +55,3 @@ The system SHALL block contract export when the template's validation status is 
 #### Scenario: Export blocked when required fields missing from activeFields
 - **WHEN** the user attempts to export a contract whose template is missing `assetName` from activeFields
 - **THEN** the system returns 409 with an error indicating the required field is missing
-
-### Requirement: Validation Status Persistence
-
-The system SHALL persist the `validated` field as a boolean column in the `templates` table, defaulting to `false` for new and existing templates.
-
-#### Scenario: New template has default validated false
-- **WHEN** a new template is created
-- **THEN** `validated` is `false` by default
-
-#### Scenario: Existing template after migration
-- **WHEN** the system runs AutoMigrate after adding the `Validated` field
-- **THEN** all existing templates have `validated = false` until they re-upload a Word file
-

@@ -5,6 +5,18 @@ import { assetApi, tenantApi, contractApi, templateApi, type Asset, type Tenant,
 
 const router = useRouter()
 
+// Field source classification for template-driven rendering
+const SYSTEM_AUTO_FIELDS = new Set(['contractId', 'totalReceivable', 'totalReceived', 'deposit', 'status', 'notes'])
+const ASSET_TENANT_FIELDS = new Set(['assetName', 'assetType', 'assetDescription', 'tenantName', 'tenantIDCard', 'tenantPhone'])
+const USER_INPUT_FIELDS = new Set(['startDate', 'endDate', 'monthlyRent', 'yearlyRent'])
+
+function classifyField(key: string): 'system-auto' | 'asset-tenant' | 'user-input' {
+  if (SYSTEM_AUTO_FIELDS.has(key)) return 'system-auto'
+  if (ASSET_TENANT_FIELDS.has(key)) return 'asset-tenant'
+  if (USER_INPUT_FIELDS.has(key)) return 'user-input'
+  return 'user-input'
+}
+
 // ---- state ----
 const step = ref(0)
 
@@ -15,19 +27,32 @@ const loadingTemplates = ref(false)
 
 const requiredFieldKeys = ['startDate', 'endDate', 'monthlyRent', 'tenantName', 'assetName']
 
-function parseActiveFieldsArray(raw: string): string[] {
-  if (!raw) return []
+function parseActiveFieldsArray(raw: string): Record<string, boolean> {
+  if (!raw) return {}
   try {
-    const arr = JSON.parse(raw)
-    return Array.isArray(arr) ? arr : []
-  } catch { return [] }
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      const obj: Record<string, boolean> = {}
+      for (const k of parsed) {
+        if (typeof k === 'string') obj[k] = true
+      }
+      return obj
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      const obj: Record<string, boolean> = {}
+      for (const [k, v] of Object.entries(parsed)) {
+        obj[k] = !!v
+      }
+      return obj
+    }
+    return {}
+  } catch { return {} }
 }
 
 function isTemplateUsable(t: Template): boolean {
   if (!t.validated || !t.filePath) return false
-  const activeArr = parseActiveFieldsArray(t.activeFields || '')
-  const activeSet = new Set(activeArr)
-  return requiredFieldKeys.every(k => activeSet.has(k))
+  const activeMap = parseActiveFieldsArray(t.activeFields || '')
+  return requiredFieldKeys.every(k => activeMap[k] === true)
 }
 
 // Step 1: assets
@@ -57,6 +82,32 @@ const contractTotalReceivable = ref<number>(0)
 const manualTotal = ref(false)
 const contractDeposit = ref<number | null>(null)
 const contractNotes = ref('')
+const rentLinked = ref(true)  // monthlyRent/yearlyRent linked conversion
+
+// Template-driven active fields list
+const activeFieldsList = computed(() => {
+  if (!selectedTemplate.value) return []
+  const afMap = parseActiveFieldsArray(selectedTemplate.value.activeFields || '')
+  return Object.keys(afMap).filter(k => afMap[k] === true)
+})
+
+// Yearly rent linked conversion
+watch(contractMonthlyRent, (val) => {
+  if (rentLinked.value && val) {
+    contractYearlyRent.value = Math.round(val * 12 * 100) / 100
+  }
+})
+watch(contractYearlyRent, (val) => {
+  if (rentLinked.value && val) {
+    contractMonthlyRent.value = Math.round(val / 12 * 100) / 100
+  }
+})
+
+function onYearlyRentInput() {
+  if (!rentLinked.value && contractYearlyRent.value) {
+    manualTotal.value = false
+  }
+}
 
 // shared
 const saving = ref(false)
@@ -129,6 +180,73 @@ onBeforeRouteLeave((_to, _from, next) => {
   }
   next()
 })
+
+// ---- template-driven field helpers ----
+const fieldLabels: Record<string, string> = {
+  contractId: '合同编号', startDate: '开始日期', endDate: '结束日期',
+  monthlyRent: '月租金', yearlyRent: '年租金', totalReceivable: '应收总额',
+  totalReceived: '已收总额', deposit: '押金', status: '状态', notes: '备注',
+  assetName: '资产名称', assetType: '资产类型', assetDescription: '资产描述',
+  tenantName: '租户姓名', tenantIDCard: '身份证号', tenantPhone: '联系电话',
+  today: '今日日期',
+}
+
+function getFieldLabel(key: string): string {
+  return fieldLabels[key] || key
+}
+
+function isRequiredField(key: string): boolean {
+  return requiredFieldKeys.includes(key)
+}
+
+function getSystemAutoValue(key: string): string {
+  switch (key) {
+    case 'contractId': return selectedTemplate.value ? '将在创建后自动生成' : ''
+    case 'totalReceivable': return contractTotalReceivable.value > 0 ? contractTotalReceivable.value.toFixed(2) : '计算中...'
+    case 'totalReceived': return '0'
+    case 'deposit': return contractDeposit.value ? contractDeposit.value.toFixed(2) : ''
+    case 'status': return 'active'
+    case 'notes': return contractNotes.value
+    default: return ''
+  }
+}
+
+function getAssetTenantValue(key: string): string {
+  if (key.startsWith('tenant')) {
+    if (selectedTenant.value) {
+      const t = selectedTenant.value as any
+      switch (key) {
+        case 'tenantName': return t.name || ''
+        case 'tenantIDCard': return t.idCard || ''
+        case 'tenantPhone': return t.phone || ''
+        default: return ''
+      }
+    } else {
+      switch (key) {
+        case 'tenantName': return newTenantName.value
+        case 'tenantIDCard': return newTenantIdCard.value || '后续补全'
+        case 'tenantPhone': return newTenantPhone.value || '后续补全'
+        default: return ''
+      }
+    }
+  }
+  if (selectedAsset.value) {
+    const a = selectedAsset.value as any
+    switch (key) {
+      case 'assetName': return a.name || ''
+      case 'assetType': return a.assetType || ''
+      case 'assetDescription': return a.description || ''
+      default: return ''
+    }
+  } else {
+    switch (key) {
+      case 'assetName': return newAssetName.value
+      case 'assetType': return newAssetType.value
+      case 'assetDescription': return '后续补全'
+      default: return ''
+    }
+  }
+}
 
 // ---- data fetching ----
 async function fetchTemplates() {
@@ -615,92 +733,133 @@ onMounted(fetchTemplates)
         <span style="margin: 0 6px;">·</span>
         <span v-if="selectedTenant">租户：{{ selectedTenant.name }}</span>
         <span v-else>新租户：{{ newTenantName }}</span>
+        <span v-if="selectedTemplate" style="margin-left: 6px;">· 模板：{{ selectedTemplate.name }}</span>
       </div>
 
       <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
 
-      <!-- Auto-generated contract ID (read-only, shown when template maps it) -->
-      <div v-if="selectedTemplate && parseActiveFieldsArray(selectedTemplate.activeFields || '').includes('contractId')" class="form-group">
-        <label class="label">合同编号</label>
-        <input
-          class="input"
-          :value="selectedTemplate ? '将在创建后自动生成' : ''"
-          disabled
-          style="background: var(--color-bg); color: var(--color-text-secondary); cursor: not-allowed;"
-        />
-        <p style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">
-          合同编号为系统自动生成的唯一标识，创建后即可在预览中查看
-        </p>
-      </div>
+      <!-- Template-driven fields: iterate activeFieldsList -->
+      <template v-if="selectedTemplate && activeFieldsList.length > 0">
+        <div v-for="key in activeFieldsList" :key="key" class="form-group">
+          <label class="label">
+            {{ getFieldLabel(key) }}
+            <span v-if="isRequiredField(key)" style="color: var(--color-danger);">*</span>
+            <span v-if="classifyField(key) === 'system-auto'" style="font-size: 0.65rem; color: var(--color-text-tertiary);">（自动生成）</span>
+            <span v-else-if="classifyField(key) === 'asset-tenant'" style="font-size: 0.65rem; color: var(--color-text-tertiary);">（来自资产/租户）</span>
+          </label>
 
-      <!-- Dates -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div class="form-group">
-          <label class="label">开始日期 <span style="color: var(--color-danger);">*</span></label>
-          <input class="input" type="date" v-model="contractStartDate" />
-        </div>
-        <div class="form-group">
-          <label class="label">结束日期 <span style="color: var(--color-danger);">*</span></label>
-          <input class="input" type="date" v-model="contractEndDate" />
-        </div>
-      </div>
+          <!-- System-auto read-only -->
+          <template v-if="classifyField(key) === 'system-auto'">
+            <input class="input" :value="getSystemAutoValue(key)" disabled
+              style="background: var(--color-bg); color: var(--color-text-secondary); cursor: not-allowed;" />
+          </template>
 
-      <!-- Rent -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <!-- Asset/tenant read-only -->
+          <template v-else-if="classifyField(key) === 'asset-tenant'">
+            <input class="input" :value="getAssetTenantValue(key)" disabled
+              style="background: var(--color-bg); color: var(--color-text-secondary); cursor: not-allowed;" />
+          </template>
+
+          <!-- User-input fields: dates -->
+          <template v-else-if="key === 'startDate' || key === 'endDate'">
+            <input class="input" type="date" v-model="contractStartDate" v-if="key === 'startDate'" />
+            <input class="input" type="date" v-model="contractEndDate" v-else />
+          </template>
+
+          <!-- User-input: monthlyRent -->
+          <template v-else-if="key === 'monthlyRent'">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input class="input" type="number" v-model="contractMonthlyRent" placeholder="如：5000"
+                @input="manualTotal = false" style="flex: 1;" />
+              <button v-if="activeFieldsList.includes('yearlyRent')"
+                :class="['link-toggle', { active: rentLinked }]" type="button"
+                @click="rentLinked = !rentLinked; if (rentLinked && contractMonthlyRent) contractYearlyRent = Math.round(contractMonthlyRent * 12 * 100) / 100"
+                :title="rentLinked ? '关联已开启，点击关闭' : '关联已关闭，点击开启'">
+                {{ rentLinked ? '🔗' : '🔓' }}
+              </button>
+            </div>
+          </template>
+
+          <!-- User-input: yearlyRent -->
+          <template v-else-if="key === 'yearlyRent'">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input class="input" type="number" v-model="contractYearlyRent"
+                :placeholder="rentLinked && contractMonthlyRent ? '月租金 × 12' : '请输入年租金'"
+                style="flex: 1;"
+                @input="onYearlyRentInput" />
+              <button v-if="activeFieldsList.includes('monthlyRent')"
+                :class="['link-toggle', { active: rentLinked }]" type="button"
+                @click="rentLinked = !rentLinked; if (rentLinked && contractMonthlyRent) contractYearlyRent = Math.round(contractMonthlyRent * 12 * 100) / 100"
+                :title="rentLinked ? '关联已开启，点击关闭' : '关联已关闭，点击开启'">
+                {{ rentLinked ? '🔗' : '🔓' }}
+              </button>
+            </div>
+          </template>
+
+          <!-- User-input: other (totalReceivable, deposit, notes, custom fields) -->
+          <template v-else-if="key === 'totalReceivable'">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input class="input" type="number" v-model="contractTotalReceivable"
+                :placeholder="contractMonthlyRent && contractStartDate && contractEndDate ? '已自动计算' : '填写日期和租金后自动计算'"
+                @focus="manualTotal = true" style="flex: 1;" />
+              <span style="font-size: 0.75rem; color: var(--color-text-tertiary); white-space: nowrap;">
+                {{ manualTotal ? '手动' : '自动' }}
+              </span>
+            </div>
+          </template>
+          <template v-else-if="key === 'deposit'">
+            <input class="input" type="number" v-model="contractDeposit" placeholder="如：5000" />
+          </template>
+          <template v-else-if="key === 'notes'">
+            <input class="input" v-model="contractNotes" placeholder="线下约定、特殊条款等" />
+          </template>
+          <template v-else>
+            <input class="input" :placeholder="'请输入 ' + getFieldLabel(key)" />
+          </template>
+
+          <p v-if="key === 'totalReceivable'" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">
+            自动计算：整月数 × 月租金 + 零天 × (月租金/30)。点击可手动微调。
+          </p>
+          <p v-if="key === 'contractId'" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">
+            合同编号为系统自动生成的唯一标识，创建后即可在预览中查看
+          </p>
+        </div>
+      </template>
+
+      <!-- Fallback: no template selected, show minimum required fields -->
+      <template v-else>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="label">开始日期 <span style="color: var(--color-danger);">*</span></label>
+            <input class="input" type="date" v-model="contractStartDate" />
+          </div>
+          <div class="form-group">
+            <label class="label">结束日期 <span style="color: var(--color-danger);">*</span></label>
+            <input class="input" type="date" v-model="contractEndDate" />
+          </div>
+        </div>
         <div class="form-group">
           <label class="label">月租金 <span style="color: var(--color-danger);">*</span></label>
-          <input
-            class="input"
-            type="number"
-            v-model="contractMonthlyRent"
-            placeholder="如：5000"
-            @input="manualTotal = false"
-          />
+          <input class="input" type="number" v-model="contractMonthlyRent" placeholder="如：5000" @input="manualTotal = false" />
         </div>
         <div class="form-group">
-          <label class="label">年租金（自动换算）</label>
-          <input
-            class="input"
-            type="number"
-            v-model="contractYearlyRent"
-            placeholder="月租金 × 12"
-            @input="if (contractYearlyRent) { contractMonthlyRent = Math.round(contractYearlyRent / 12 * 100) / 100; manualTotal = false }"
-          />
+          <label class="label">应收总额</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input class="input" type="number" v-model="contractTotalReceivable"
+              :placeholder="contractMonthlyRent && contractStartDate && contractEndDate ? '已自动计算' : '填写日期和租金后自动计算'"
+              @focus="manualTotal = true" />
+            <span style="font-size: 0.75rem; color: var(--color-text-tertiary); white-space: nowrap;">{{ manualTotal ? '手动' : '自动' }}</span>
+          </div>
         </div>
-      </div>
-
-      <!-- Total receivable -->
-      <div class="form-group">
-        <label class="label">应收总额</label>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input
-            class="input"
-            type="number"
-            v-model="contractTotalReceivable"
-            :placeholder="contractMonthlyRent && contractStartDate && contractEndDate ? '已自动计算' : '填写日期和租金后自动计算'"
-            @focus="manualTotal = true"
-          />
-          <span style="font-size: 0.75rem; color: var(--color-text-tertiary); white-space: nowrap;">
-            {{ manualTotal ? '手动' : '自动' }}
-          </span>
-        </div>
-        <p style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">
-          自动计算：整月数 × 月租金 + 零天 × (月租金/30)。点击可手动微调（如首月折半）。
-        </p>
-      </div>
-
-      <!-- Deposit & Notes -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
         <div class="form-group">
           <label class="label">押金（可选）</label>
           <input class="input" type="number" v-model="contractDeposit" placeholder="如：5000" />
         </div>
-      </div>
-
-      <div class="form-group">
-        <label class="label">备注（可选）</label>
-        <input class="input" v-model="contractNotes" placeholder="线下约定、特殊条款等" />
-      </div>
+        <div class="form-group">
+          <label class="label">备注（可选）</label>
+          <input class="input" v-model="contractNotes" placeholder="线下约定、特殊条款等" />
+        </div>
+      </template>
 
       <div style="margin-top: 20px; display: flex; gap: 8px;">
         <button class="btn btn-secondary" @click="step = 2">← 返回录租户</button>
