@@ -1,5 +1,27 @@
-.claude/skills/ui-ux-pro-max/scripts/__pycache__/
+# Environment & secrets
+.env
+.env.*
+
+# Build artifacts
 cmd/server/dist/
 server
+
+# Database & uploads
 *.db
 uploads/
+
+# OS & editor
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Temp
+tmp/
+
+# Node (root-level guard)
+node_modules/

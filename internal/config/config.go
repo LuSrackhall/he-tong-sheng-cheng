@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"log"
 	"os"
 )
 
@@ -28,14 +29,10 @@ func Load() *Config {
 	flag.StringVar(&cfg.Port, "port", "8080", "Server port")
 	flag.Parse()
 
-	cfg.JWTSecret = envDefault("JWT_SECRET", "asset-leasing-secret-change-me")
+	cfg.JWTSecret = os.Getenv("JWT_SECRET")
+	if cfg.JWTSecret == "" {
+		log.Fatalf("FATAL: JWT_SECRET environment variable is required")
+	}
 
 	return cfg
-}
-
-func envDefault(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
 }
