@@ -89,6 +89,8 @@ export const authApi = {
   login: (username: string, password: string) =>
     api.post<{ token: string; user: { id: number; username: string; role: string } }>('/auth/login', { username, password }),
   me: () => api.get('/auth/me'),
+  changePassword: (oldPassword: string, newPassword: string) =>
+    api.put<{ message: string }>('/auth/password', { oldPassword, newPassword }),
   listUsers: () => api.get('/admin/users'),
   createUser: (data: { username: string; password: string; role: string }) => api.post('/admin/users', data),
   deleteUser: (id: number) => api.delete(`/admin/users/${id}`),

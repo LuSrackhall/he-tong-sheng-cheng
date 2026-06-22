@@ -205,6 +205,10 @@ func (r *UserRepo) Count() (int64, error) {
 	return count, err
 }
 
+func (r *UserRepo) Update(u *domain.User) error {
+	return r.db.Save(u).Error
+}
+
 func (r *ArrearsRecordRepo) Create(ar *domain.ArrearsRecord) error {
 	return r.db.Create(ar).Error
 }

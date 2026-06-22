@@ -60,6 +60,7 @@ type UserRepo interface {
 	GetByUsername(username string) (*User, error)
 	GetByID(id uint) (*User, error)
 	List() ([]User, error)
+	Update(u *User) error
 	Delete(id uint) error
 	Count() (int64, error)
 }

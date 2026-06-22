@@ -53,6 +53,7 @@ func main() {
 		protected.Use(authmw.RequireAuth())
 		{
 			protected.GET("/auth/me", authH.Me)
+			protected.PUT("/auth/password", authH.ChangePassword)
 
 			protected.GET("/assets", assetH.List)
 			protected.POST("/assets", assetH.Create)
