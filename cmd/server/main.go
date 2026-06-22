@@ -47,6 +47,10 @@ func main() {
 
 	api := r.Group("/api")
 	{
+		api.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "ok"})
+		})
+
 		api.POST("/auth/login", authH.Login)
 
 		protected := api.Group("")
