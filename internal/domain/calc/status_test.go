@@ -15,7 +15,9 @@ func TestContractStatus(t *testing.T) {
 		{"fully paid", "2026-12-31", 12000, 12000, StatusPaidUp},
 		{"active with partial payment", "2026-12-31", 3000, 12000, StatusArrears},
 		{"expired with debt", "2026-05-15", 3000, 12000, StatusExpired},
-		{"no payment yet", "2026-12-31", 0, 12000, StatusActive},
+		{"expired and fully paid → paidup", "2026-05-15", 12000, 12000, StatusPaidUp},
+		{"no payment yet → active", "2026-12-31", 0, 12000, StatusActive},
+		{"at end date with partial payment", "2026-06-01", 3000, 12000, StatusArrears},
 	}
 
 	for _, tt := range tests {

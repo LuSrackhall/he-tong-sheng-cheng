@@ -7,15 +7,41 @@ import (
 
 const DaysPerMonth = 30.0
 
+// addMonths advances d by n calendar months, clamping end-of-month dates
+// (e.g. Jan 31 → Feb 28 instead of Mar 3).
+func addMonths(d time.Time, n int) time.Time {
+	targetMonth := d.Month() + time.Month(n)
+	year := d.Year() + int(targetMonth-1)/12
+	month := time.Month((int(targetMonth)-1)%12 + 1)
+	day := d.Day()
+	lastDay := daysIn(year, month)
+	if day > lastDay {
+		day = lastDay
+	}
+	return time.Date(year, month, day, d.Hour(), d.Minute(), d.Second(), d.Nanosecond(), d.Location())
+}
+
+func daysIn(year int, month time.Month) int {
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+}
+
 // TotalReceivable calculates the total rent receivable for the entire contract period.
-// formula: wholeMonths * monthlyRent + remainingDays * (monthlyRent / 30)
+// Uses real calendar months (month-end aware), then remaining days at daily rate.
 func TotalReceivable(start, end time.Time, monthlyRent float64) float64 {
-	days := int(end.Sub(start).Hours() / 24)
-	if days <= 0 {
+	if !end.After(start) {
 		return 0
 	}
-	wholeMonths := days / 30
-	remainingDays := days % 30
+	wholeMonths := 0
+	cursor := start
+	for {
+		next := addMonths(cursor, 1)
+		if next.After(end) {
+			break
+		}
+		wholeMonths++
+		cursor = next
+	}
+	remainingDays := int(end.Sub(cursor).Hours() / 24)
 	dailyRate := monthlyRent / DaysPerMonth
 	return float64(wholeMonths)*monthlyRent + float64(remainingDays)*dailyRate
 }
@@ -23,7 +49,8 @@ func TotalReceivable(start, end time.Time, monthlyRent float64) float64 {
 // UsedUpDate calculates the date through which the tenant has paid.
 // Converts totalReceived into whole calendar months first, then remainder days.
 // Each calendar month advances the date by one actual month (respecting varying month lengths).
-func UsedUpDate(start time.Time, totalReceived, monthlyRent float64) time.Time {
+// The result is capped at endDate.
+func UsedUpDate(start time.Time, totalReceived, monthlyRent float64, endDate time.Time) time.Time {
 	if monthlyRent <= 0 || totalReceived <= 0 {
 		return start
 	}
@@ -34,12 +61,16 @@ func UsedUpDate(start time.Time, totalReceived, monthlyRent float64) time.Time {
 
 	date := start
 	for i := 0; i < wholeMonths; i++ {
-		date = date.AddDate(0, 1, 0)
+		date = addMonths(date, 1)
 	}
 
 	if remainder > 0 {
 		extraDays := int(math.Ceil(remainder / dailyRate))
 		date = date.AddDate(0, 0, extraDays)
+	}
+
+	if date.After(endDate) {
+		return endDate
 	}
 
 	return date

@@ -2,6 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { tenantApi, contractApi, type Tenant, type Contract } from '../api'
 
+function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
+  let timer: ReturnType<typeof setTimeout>
+  return ((...args: any[]) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }) as F
+}
+
 const tenants = ref<Tenant[]>([])
 const total = ref(0)
 const search = ref('')
@@ -81,6 +89,8 @@ async function save() {
 }
 
 onMounted(fetchTenants)
+
+const onSearchInput = useDebounce(() => { page.value = 0; fetchTenants() }, 300)
 </script>
 
 <template>
@@ -94,7 +104,7 @@ onMounted(fetchTenants)
     </div>
 
     <div class="form-group">
-      <input class="input" v-model="search" @input="page = 0; fetchTenants()" placeholder="搜索姓名/电话/身份证号..." />
+      <input class="input" v-model="search" @input="onSearchInput" placeholder="搜索姓名/电话/身份证号..." />
     </div>
 
     <div class="table-wrapper">

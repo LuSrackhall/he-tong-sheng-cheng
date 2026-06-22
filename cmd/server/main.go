@@ -47,12 +47,17 @@ func main() {
 
 	api := r.Group("/api")
 	{
+		api.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "ok"})
+		})
+
 		api.POST("/auth/login", authH.Login)
 
 		protected := api.Group("")
 		protected.Use(authmw.RequireAuth())
 		{
 			protected.GET("/auth/me", authH.Me)
+			protected.PUT("/auth/password", authH.ChangePassword)
 
 			protected.GET("/assets", assetH.List)
 			protected.POST("/assets", assetH.Create)

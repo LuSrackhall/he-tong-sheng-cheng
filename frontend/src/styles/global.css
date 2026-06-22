@@ -53,7 +53,7 @@ input, select, textarea, button {
   gap: var(--space-sm);
   padding: 10px 20px;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   font-weight: 500;
   font-size: 0.875rem;
   cursor: pointer;
@@ -93,7 +93,7 @@ input, select, textarea, button {
   width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   background: var(--color-surface-solid);
   color: var(--color-text);
   font-size: 0.875rem;

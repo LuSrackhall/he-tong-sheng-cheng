@@ -3,6 +3,8 @@ package postgres
 import (
 	"asset-leasing-system/internal/domain"
 	"fmt"
+	"log"
+	"os"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
@@ -33,7 +35,12 @@ func Setup(host, port, user, pass, dbname string) (*gorm.DB, error) {
 	var count int64
 	db.Model(&domain.User{}).Count(&count)
 	if count == 0 {
-		hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+		seedPass := os.Getenv("ADMIN_PASSWORD")
+		if seedPass == "" {
+			seedPass = "admin123"
+			log.Println("WARNING: Using default admin password. Set ADMIN_PASSWORD env var for production.")
+		}
+		hash, _ := bcrypt.GenerateFromPassword([]byte(seedPass), bcrypt.DefaultCost)
 		db.Create(&domain.User{Username: "admin", Password: string(hash), Role: "admin"})
 	}
 

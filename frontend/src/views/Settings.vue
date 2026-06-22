@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api, { templateApi } from '../api'
+import api, { templateApi, authApi } from '../api'
 
 interface Template {
   id: number
@@ -42,6 +42,42 @@ async function deleteTemplate(t: Template) {
 }
 
 // Custom field modal state (per template)
+
+// 修改密码
+const oldPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const changingPassword = ref(false)
+const passwordError = ref('')
+
+async function changePassword() {
+  passwordError.value = ''
+  if (!oldPassword.value || !newPassword.value) {
+    passwordError.value = '请输入原密码和新密码'
+    return
+  }
+  if (newPassword.value.length < 6) {
+    passwordError.value = '新密码至少需要6位'
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.value = '两次输入的新密码不一致'
+    return
+  }
+  changingPassword.value = true
+  try {
+    await authApi.changePassword(oldPassword.value, newPassword.value)
+    flash('密码修改成功')
+    oldPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (e: any) {
+    passwordError.value = e.response?.data?.error || '密码修改失败'
+  } finally {
+    changingPassword.value = false
+  }
+}
+
 const showCustomField = ref<Record<number, boolean>>({})
 const customFieldName = ref<Record<number, string>>({})
 const customFieldLabel = ref<Record<number, string>>({})
@@ -546,6 +582,31 @@ onMounted(fetchTemplates)
     <!-- Success toast -->
     <div v-if="successMsg" class="success-toast">{{ successMsg }}</div>
     <div v-if="errorMsg" class="error-toast">{{ errorMsg }}</div>
+
+    <!-- 修改密码 -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <span class="template-name">修改密码</span>
+      </div>
+      <div style="padding: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+        <div>
+          <label style="font-size: 13px; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">原密码</label>
+          <input v-model="oldPassword" type="password" class="input" placeholder="输入原密码" style="width: 180px;" />
+        </div>
+        <div>
+          <label style="font-size: 13px; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">新密码</label>
+          <input v-model="newPassword" type="password" class="input" placeholder="至少6位" style="width: 180px;" />
+        </div>
+        <div>
+          <label style="font-size: 13px; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">确认新密码</label>
+          <input v-model="confirmPassword" type="password" class="input" placeholder="再次输入" style="width: 180px;" />
+        </div>
+        <button class="btn btn-primary" :disabled="changingPassword" @click="changePassword">
+          {{ changingPassword ? '修改中...' : '确认修改' }}
+        </button>
+      </div>
+      <div v-if="passwordError" style="padding: 0 16px 12px; color: var(--color-danger); font-size: 13px;">{{ passwordError }}</div>
+    </div>
 
     <!-- Page header -->
     <div class="page-header">
