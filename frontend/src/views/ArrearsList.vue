@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api'
+
+const router = useRouter()
 
 const arrearsContracts = ref<any[]>([])
 const activeTab = ref(3)
@@ -35,6 +38,10 @@ async function fetchArrears() {
 }
 
 onMounted(fetchArrears)
+
+function goToCollect(c: any) {
+  router.push({ path: '/collect-rent', query: { contractId: String(c.id) } })
+}
 </script>
 
 <template>
@@ -69,6 +76,7 @@ onMounted(fetchArrears)
             <th>钱用到</th>
             <th>到期日</th>
             <th>建议操作</th>
+            <th>收款</th>
           </tr>
         </thead>
         <tbody>
@@ -81,6 +89,7 @@ onMounted(fetchArrears)
             <td>{{ c.usedUpDate?.substring(0, 10) || '-' }}</td>
             <td>{{ c.endDate?.substring(0, 10) || '-' }}</td>
             <td style="font-size: 0.8125rem; color: var(--color-text-secondary);">{{ suggestedActions[activeTab] }}</td>
+            <td><button class="btn btn-primary btn-sm" @click="goToCollect(c)">去收款</button></td>
           </tr>
         </tbody>
       </table>

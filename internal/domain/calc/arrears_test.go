@@ -14,8 +14,16 @@ func TestClassifyArrears(t *testing.T) {
 		expectedLevel   int
 	}{
 		{
-			name:            "Level 1: payment warning 20 days ahead",
+			name:            "Level 1: warning 20 days ahead",
 			usedUpDate:      "2026-06-21",
+			endDate:         "2026-12-31",
+			totalReceived:   6000,
+			totalReceivable: 12000,
+			expectedLevel:   Level1Warning,
+		},
+		{
+			name:            "Level 1: warning 28 days ahead (within 30-day window)",
+			usedUpDate:      "2026-06-29",
 			endDate:         "2026-12-31",
 			totalReceived:   6000,
 			totalReceivable: 12000,
@@ -33,6 +41,14 @@ func TestClassifyArrears(t *testing.T) {
 			name:            "Level 3: overdue",
 			usedUpDate:      "2026-05-15",
 			endDate:         "2026-12-31",
+			totalReceived:   3000,
+			totalReceivable: 12000,
+			expectedLevel:   Level3Overdue,
+		},
+		{
+			name:            "Level 3: today equals endDate (boundary)",
+			usedUpDate:      "2026-05-15",
+			endDate:         "2026-06-01",
 			totalReceived:   3000,
 			totalReceivable: 12000,
 			expectedLevel:   Level3Overdue,

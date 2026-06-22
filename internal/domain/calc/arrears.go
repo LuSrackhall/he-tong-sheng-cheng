@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	Level1Warning   = 1 // 应缴预警 — used up date within 25 days ahead
-	Level2Reminder  = 2 // 近期应缴提醒 — used up date within 5 days ahead
+	Level1Warning   = 1 // 应缴预警 — used up date within 30 days ahead
+	Level2Reminder  = 2 // 近期应缴提醒 — used up date within 7 days ahead
 	Level3Overdue   = 3 // 逾期未缴催收 — used up date in the past, end date still future
-	Level4Expiring  = 4 // 到期预警 — end date within 20 days, not fully paid
+	Level4Expiring  = 4 // 到期预警 — end date within 30 days, not fully paid
 	Level5Recovery  = 5 // 已到期欠费追缴 — end date in the past, not fully paid
 )
 
@@ -35,19 +35,19 @@ var SuggestedActions = map[int]string{
 func ClassifyArrears(usedUpDate, endDate time.Time, totalReceived, totalReceivable float64, today time.Time) int {
 	notFullyPaid := totalReceived < totalReceivable
 
-	// Level 3: overdue — used up date has passed, end date still in future
-	if usedUpDate.Before(today) && endDate.After(today) && notFullyPaid {
+	// Level 3: overdue — used up date has passed, end date still in future (or today)
+	if usedUpDate.Before(today) && !endDate.Before(today) && notFullyPaid {
 		return Level3Overdue
 	}
 
-	// Level 2: imminent — used up date within 5 days
+	// Level 2: imminent — used up date within 7 days
 	daysToUsedUp := math.Ceil(usedUpDate.Sub(today).Hours() / 24)
-	if daysToUsedUp >= 0 && daysToUsedUp <= 5 && notFullyPaid {
+	if daysToUsedUp >= 0 && daysToUsedUp <= 7 && notFullyPaid {
 		return Level2Reminder
 	}
 
-	// Level 1: warning — used up date within 25 days
-	if daysToUsedUp >= 0 && daysToUsedUp <= 25 && notFullyPaid {
+	// Level 1: warning — used up date within 30 days
+	if daysToUsedUp >= 0 && daysToUsedUp <= 30 && notFullyPaid {
 		return Level1Warning
 	}
 
@@ -57,9 +57,9 @@ func ClassifyArrears(usedUpDate, endDate time.Time, totalReceived, totalReceivab
 		return Level5Recovery
 	}
 
-	// Level 4: expiring — end date within 20 days
+	// Level 4: expiring — end date within 30 days
 	daysToEnd := math.Ceil(endDate.Sub(today).Hours() / 24)
-	if daysToEnd >= 0 && daysToEnd <= 20 && notFullyPaid {
+	if daysToEnd >= 0 && daysToEnd <= 30 && notFullyPaid {
 		return Level4Expiring
 	}
 

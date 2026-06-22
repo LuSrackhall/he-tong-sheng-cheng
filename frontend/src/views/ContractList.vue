@@ -2,6 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { contractApi, type Contract } from '../api'
 
+function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
+  let timer: ReturnType<typeof setTimeout>
+  return ((...args: any[]) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }) as F
+}
+
 const contracts = ref<Contract[]>([])
 const total = ref(0)
 const search = ref('')
@@ -56,6 +64,8 @@ async function save() {
 }
 
 onMounted(fetchContracts)
+
+const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 300)
 </script>
 
 <template>
@@ -63,7 +73,7 @@ onMounted(fetchContracts)
     <div class="page-header"><h2>合同管理</h2></div>
 
     <div style="display: flex; gap: 12px; margin-bottom: var(--space-lg);">
-      <input class="input" v-model="search" @input="fetchContracts" placeholder="搜索租户/资产名称..." style="flex: 1;" />
+      <input class="input" v-model="search" @input="onSearchInput" placeholder="搜索租户/资产名称..." style="flex: 1;" />
       <select class="input" v-model="statusFilter" @change="fetchContracts" style="width: 140px;">
         <option value="">全部状态</option>
         <option value="active">执行中</option>

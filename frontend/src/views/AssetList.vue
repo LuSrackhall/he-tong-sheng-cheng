@@ -2,6 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { assetApi, contractApi, type Asset, type Contract } from '../api'
 
+function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
+  let timer: ReturnType<typeof setTimeout>
+  return ((...args: any[]) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }) as F
+}
+
 const assets = ref<Asset[]>([])
 const total = ref(0)
 const search = ref('')
@@ -81,7 +89,7 @@ async function save() {
 }
 
 function getTypeLabel(type: string): string {
-  const map: Record<string, string> = { shop: '商铺', parking: '车位', booth: '摊位', equipment: '设备', other: '其他' }
+  const map: Record<string, string> = { shop: '商铺', parking: '车位', stall: '摊位', equipment: '设备', other: '其他' }
   return map[type] || type
 }
 
@@ -91,6 +99,8 @@ function getStatusLabel(status: string): string {
 }
 
 onMounted(fetchAssets)
+
+const onSearchInput = useDebounce(() => { page.value = 0; fetchAssets() }, 300)
 </script>
 
 <template>
@@ -104,7 +114,7 @@ onMounted(fetchAssets)
     </div>
 
     <div class="form-group">
-      <input class="input" v-model="search" @input="page = 0; fetchAssets()" placeholder="搜索资产名称..." />
+      <input class="input" v-model="search" @input="onSearchInput" placeholder="搜索资产名称..." />
     </div>
 
     <div class="table-wrapper">
@@ -221,7 +231,7 @@ onMounted(fetchAssets)
             <select class="input" v-model="form.assetType">
               <option value="shop">商铺</option>
               <option value="parking">车位</option>
-              <option value="booth">摊位</option>
+              <option value="stall">摊位</option>
               <option value="equipment">设备</option>
               <option value="other">其他</option>
             </select>

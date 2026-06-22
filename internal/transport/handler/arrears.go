@@ -42,7 +42,7 @@ func (h *ArrearsHandler) List(c *gin.Context) {
 
 	for _, ct := range contracts {
 		level := calc.ClassifyArrears(
-			calc.UsedUpDate(ct.StartDate, ct.TotalReceived, ct.MonthlyRent),
+			calc.UsedUpDate(ct.StartDate, ct.TotalReceived, ct.MonthlyRent, ct.EndDate),
 			ct.EndDate,
 			ct.TotalReceived,
 			ct.TotalReceivable,
@@ -53,7 +53,7 @@ func (h *ArrearsHandler) List(c *gin.Context) {
 			continue
 		}
 
-		usedUp := calc.UsedUpDate(ct.StartDate, ct.TotalReceived, ct.MonthlyRent)
+		usedUp := calc.UsedUpDate(ct.StartDate, ct.TotalReceived, ct.MonthlyRent, ct.EndDate)
 
 		result = append(result, arrearsContract{
 			ID:              ct.ID,

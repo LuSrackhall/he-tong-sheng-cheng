@@ -2,6 +2,7 @@ package handler
 
 import (
 	"asset-leasing-system/internal/domain"
+	"asset-leasing-system/internal/domain/calc"
 	"net/http"
 	"strconv"
 	"time"
@@ -85,6 +86,8 @@ func (h *PaymentHandler) Create(c *gin.Context) {
 	}
 
 	contract.TotalReceived += req.Amount
+	// 收款后自动同步合同状态
+	contract.Status = calc.ContractStatus(contract.EndDate, contract.TotalReceived, contract.TotalReceivable, time.Now())
 	if err := h.contractRepo.Update(contract); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update contract"})
 		return

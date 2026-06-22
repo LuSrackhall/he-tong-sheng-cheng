@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { contractApi, paymentApi, type Contract, type Payment } from '../api'
+
+function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
+  let timer: ReturnType<typeof setTimeout>
+  return ((...args: any[]) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }) as F
+}
+
+const route = useRoute()
 
 const contracts = ref<Contract[]>([])
 const total = ref(0)
@@ -17,11 +28,16 @@ const saving = ref(false)
 const errorMessage = ref('')
 const submitLock = ref(false)
 
+const onlyArrears = ref(false)
+
 async function fetchContracts() {
-  const { data } = await contractApi.list({ search: search.value, offset: page.value * pageSize, limit: pageSize })
+  const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }
+  if (onlyArrears.value) params.status = 'arrears'
+  const { data } = await contractApi.list(params)
   contracts.value = data.data
   total.value = data.total
 }
+const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 300)
 async function openPayModal(c: Contract) {
   selectedContract.value = c
   showPayModal.value = true
@@ -52,15 +68,24 @@ async function recordPayment() {
   }
 }
 
-onMounted(fetchContracts)
+onMounted(() => {
+  // 从催缴清单跳转时，自动搜索指定合同
+  const contractId = route.query.contractId as string
+  if (contractId) search.value = contractId
+  fetchContracts()
+})
 </script>
 
 <template>
   <div>
     <div class="page-header"><h2>收租金</h2></div>
 
-    <div class="form-group">
-      <input class="input" v-model="search" @input="fetchContracts" placeholder="搜索租户名或资产名..." />
+    <div class="form-group" style="display: flex; gap: 12px; align-items: center;">
+      <input class="input" v-model="search" @input="onSearchInput" placeholder="搜索租户名或资产名..." style="flex: 1;" />
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--color-text-secondary); white-space: nowrap; cursor: pointer; user-select: none;">
+        <input type="checkbox" v-model="onlyArrears" @change="page = 0; fetchContracts()" />
+        仅欠费
+      </label>
     </div>
 
     <div v-if="contracts.length === 0" class="empty-state">暂无匹配的合同</div>
@@ -121,9 +146,15 @@ onMounted(fetchContracts)
         <div class="form-group"><label class="label">收款金额</label><input class="input" type="number" v-model="paymentAmount" placeholder="输入收款金额" /></div>
         <div class="form-group"><label class="label">备注</label><input class="input" v-model="paymentNotes" placeholder="备注信息" /></div>
         <div v-if="errorMessage" class="alert alert-danger" style="margin-bottom: 12px;">{{ errorMessage }}</div>
-        <button class="btn btn-primary" style="width: 100%; margin-bottom: 16px;" :disabled="saving || paymentAmount <= 0" @click="recordPayment">
-          {{ saving ? '记录中...' : '确认收款' }}
-        </button>
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button class="btn btn-primary" style="flex: 1;" :disabled="saving || paymentAmount <= 0" @click="recordPayment">
+            {{ saving ? '记录中...' : '确认收款' }}
+          </button>
+          <button v-if="selectedContract.totalReceivable - selectedContract.totalReceived > 0" class="btn btn-secondary" :disabled="saving"
+            @click="paymentAmount = selectedContract.totalReceivable - selectedContract.totalReceived">
+            缴差额 ¥{{ (selectedContract.totalReceivable - selectedContract.totalReceived).toLocaleString() }}
+          </button>
+        </div>
 
         <h4 style="font-size: 0.875rem; margin-bottom: 8px;">收款记录</h4>
         <div v-if="payments.length === 0" style="font-size: 0.8125rem; color: var(--color-text-tertiary);">暂无收款记录</div>
