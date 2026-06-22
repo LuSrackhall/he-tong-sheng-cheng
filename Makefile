@@ -5,7 +5,7 @@ build: build-frontend build-backend
 
 build-frontend:
 	@echo "==> Building frontend..."
-	cd frontend && npm ci && npm run build
+	cd frontend && npm install && npm run build
 
 build-backend:
 	@echo "==> Building Go binary..."
