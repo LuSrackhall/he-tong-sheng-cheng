@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type PaymentHandler struct {
@@ -15,10 +16,11 @@ type PaymentHandler struct {
 	contractRepo   domain.ContractRepo
 	receiptBookRepo domain.ReceiptBookRepo
 	receiptRepo    domain.ReceiptRepo
+	db             *gorm.DB
 }
 
-func NewPaymentHandler(repo domain.PaymentRepo, contractRepo domain.ContractRepo, rbRepo domain.ReceiptBookRepo, rRepo domain.ReceiptRepo) *PaymentHandler {
-	return &PaymentHandler{repo, contractRepo, rbRepo, rRepo}
+func NewPaymentHandler(repo domain.PaymentRepo, contractRepo domain.ContractRepo, rbRepo domain.ReceiptBookRepo, rRepo domain.ReceiptRepo, db *gorm.DB) *PaymentHandler {
+	return &PaymentHandler{repo, contractRepo, rbRepo, rRepo, db}
 }
 
 type paymentReq struct {
@@ -61,12 +63,6 @@ func (h *PaymentHandler) Create(c *gin.Context) {
 		return
 	}
 
-	contract, err := h.contractRepo.GetByID(uint(contractID))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
-		return
-	}
-
 	paidAt := time.Now()
 	if req.PaidAt != "" {
 		if t, err := time.Parse("2006-01-02", req.PaidAt); err == nil {
@@ -80,22 +76,36 @@ func (h *PaymentHandler) Create(c *gin.Context) {
 		PaidAt:     paidAt,
 		Notes:      req.Notes,
 	}
-	if err := h.repo.Create(payment); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record payment"})
-		return
-	}
 
-	contract.TotalReceived += req.Amount
-	// 收款后自动同步合同状态
-	contract.Status = calc.ContractStatus(contract.EndDate, contract.TotalReceived, contract.TotalReceivable, time.Now())
-	if err := h.contractRepo.Update(contract); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update contract"})
-		return
-	}
+	var shortfall float64
 
-	shortfall := contract.TotalReceivable - contract.TotalReceived
-	if shortfall < 0 {
-		shortfall = 0
+	// 事务保护：收款记录 + 合同更新必须原子完成
+	err = h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(payment).Error; err != nil {
+			return err
+		}
+
+		var contract domain.Contract
+		if err := tx.First(&contract, contractID).Error; err != nil {
+			return err
+		}
+
+		contract.TotalReceived += req.Amount
+		contract.Status = calc.ContractStatus(contract.EndDate, contract.TotalReceived, contract.TotalReceivable, time.Now())
+		if err := tx.Save(&contract).Error; err != nil {
+			return err
+		}
+
+		shortfall = contract.TotalReceivable - contract.TotalReceived
+		if shortfall < 0 {
+			shortfall = 0
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "收款失败，请重试"})
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{

@@ -59,3 +59,9 @@ func (r *ContractRepo) ListActive() ([]domain.Contract, error) {
 	err := r.db.Where("status IN ?", []string{"active", "arrears"}).Find(&contracts).Error
 	return contracts, err
 }
+
+func (r *ContractRepo) ListUnpaid() ([]domain.Contract, error) {
+	var contracts []domain.Contract
+	err := r.db.Where("status != ?", "paidup").Preload("Asset").Preload("Tenant").Find(&contracts).Error
+	return contracts, err
+}

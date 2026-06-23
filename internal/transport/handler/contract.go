@@ -3,6 +3,7 @@ package handler
 import (
 	"asset-leasing-system/internal/docx"
 	"asset-leasing-system/internal/domain"
+	"asset-leasing-system/internal/domain/calc"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -85,11 +86,7 @@ func (h *ContractHandler) Create(c *gin.Context) {
 	}
 
 	if req.TotalReceivable <= 0 {
-		// auto-calculate
-		wholeMonths := int(endDate.Sub(startDate).Hours()/24) / 30
-		remainingDays := int(endDate.Sub(startDate).Hours()/24) % 30
-		dailyRate := req.MonthlyRent / 30.0
-		req.TotalReceivable = float64(wholeMonths)*req.MonthlyRent + float64(remainingDays)*dailyRate
+		req.TotalReceivable = calc.TotalReceivable(startDate, endDate, req.MonthlyRent)
 	}
 
 	if req.TemplateID != nil && *req.TemplateID != 0 {

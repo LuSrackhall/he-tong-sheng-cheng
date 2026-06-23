@@ -24,6 +24,7 @@ type ContractRepo interface {
 	ListByAssetID(assetID uint) ([]Contract, error)
 	ListByTenantID(tenantID uint) ([]Contract, error)
 	ListActive() ([]Contract, error)
+	ListUnpaid() ([]Contract, error)
 }
 
 type PaymentRepo interface {

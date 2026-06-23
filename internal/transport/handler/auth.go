@@ -133,6 +133,47 @@ func (h *AuthHandler) DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
+
+	// 禁止删除自己
+	currentUserID, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未认证"})
+		return
+	}
+	uid, ok := currentUserID.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "内部错误"})
+		return
+	}
+	if uid == uint(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "不能删除自己的账号"})
+		return
+	}
+
+	// 禁止删除最后一个管理员
+	targetUser, err := h.userRepo.GetByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+		return
+	}
+	if targetUser.Role == "admin" {
+		users, err := h.userRepo.List()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "无法验证管理员数量"})
+			return
+		}
+		adminCount := 0
+		for _, u := range users {
+			if u.Role == "admin" {
+				adminCount++
+			}
+		}
+		if adminCount <= 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "不能删除最后一个管理员"})
+			return
+		}
+	}
+
 	if err := h.userRepo.Delete(uint(id)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return

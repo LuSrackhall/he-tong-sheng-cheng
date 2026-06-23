@@ -31,7 +31,7 @@ type arrearsContract struct {
 }
 
 func (h *ArrearsHandler) List(c *gin.Context) {
-	contracts, err := h.contractRepo.ListActive()
+	contracts, err := h.contractRepo.ListUnpaid()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list contracts"})
 		return
@@ -41,8 +41,9 @@ func (h *ArrearsHandler) List(c *gin.Context) {
 	var result []arrearsContract
 
 	for _, ct := range contracts {
+		usedUp := calc.UsedUpDate(ct.StartDate, ct.TotalReceived, ct.MonthlyRent, ct.EndDate)
 		level := calc.ClassifyArrears(
-			calc.UsedUpDate(ct.StartDate, ct.TotalReceived, ct.MonthlyRent, ct.EndDate),
+			usedUp,
 			ct.EndDate,
 			ct.TotalReceived,
 			ct.TotalReceivable,
@@ -52,8 +53,6 @@ func (h *ArrearsHandler) List(c *gin.Context) {
 		if level == 0 {
 			continue
 		}
-
-		usedUp := calc.UsedUpDate(ct.StartDate, ct.TotalReceived, ct.MonthlyRent, ct.EndDate)
 
 		result = append(result, arrearsContract{
 			ID:              ct.ID,

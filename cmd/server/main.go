@@ -30,7 +30,7 @@ func main() {
 	assetH := handler.NewAssetHandler(deps.AssetRepo)
 	tenantH := handler.NewTenantHandler(deps.TenantRepo)
 	contractH := handler.NewContractHandler(deps.ContractRepo, deps.TemplateRepo)
-	paymentH := handler.NewPaymentHandler(deps.PaymentRepo, deps.ContractRepo, deps.ReceiptBookRepo, deps.ReceiptRepo)
+	paymentH := handler.NewPaymentHandler(deps.PaymentRepo, deps.ContractRepo, deps.ReceiptBookRepo, deps.ReceiptRepo, deps.DB)
 	receiptBookH := handler.NewReceiptBookHandler(deps.ReceiptBookRepo)
 	arrearsH := handler.NewArrearsHandler(deps.ContractRepo)
 

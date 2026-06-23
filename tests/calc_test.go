@@ -339,3 +339,177 @@ func TestTotalReceivable_FebEndOfMonth(t *testing.T) {
 		t.Errorf("TotalReceivable(2月底起租) = %f, want %f", got, want)
 	}
 }
+
+// ── 新增: 真实日历月跨月验证 ─────────────────────────────────────────────────
+
+func TestTotalReceivable_CrossMonths_Feb15ToMar20(t *testing.T) {
+	// 2026-01-15 到 2026-03-20（跨 2 个完整月 + 5 天）
+	// addMonths(Jan15,1)=Feb15, addMonths(Feb15,1)=Mar15
+	// 2 whole months, remaining: Mar15→Mar20 = 5 days
+	start := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC)
+	rent := 3000.0
+	got := calc.TotalReceivable(start, end, rent)
+	want := 2*rent + 5*(rent/30.0) // 6000 + 500 = 6500
+	if math.Abs(got-want) > 0.01 {
+		t.Errorf("TotalReceivable(01-15→03-20) = %f, want %f", got, want)
+	}
+}
+
+func TestTotalReceivable_MonthEndClamp_Jan31ToFeb28(t *testing.T) {
+	// 2026-01-31 到 2026-02-28（月末钳位，恰好 1 个月）
+	// addMonths(Jan31,1)=Feb28 (clamped), Feb28 == end → 0 remaining
+	// 1 whole month, 0 remaining days
+	start := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
+	rent := 5000.0
+	got := calc.TotalReceivable(start, end, rent)
+	want := 1 * rent // 5000
+	if math.Abs(got-want) > 0.01 {
+		t.Errorf("TotalReceivable(月末钳位Jan31→Feb28) = %f, want %f", got, want)
+	}
+}
+
+// ── 新增: ContractStatus 优先级验证 ───────────────────────────────────────────
+
+func TestContractStatus_ExpiredButFullyPaid(t *testing.T) {
+	// 已过期且已缴清 → paidup（paidup 优先于 expired）
+	endDate := time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC)
+	today := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	got := calc.ContractStatus(endDate, 12000, 12000, today)
+	if got != calc.StatusPaidUp {
+		t.Errorf("ContractStatus(已过期+已缴清) = %s, want %s", got, calc.StatusPaidUp)
+	}
+}
+
+func TestContractStatus_NoPaymentNotExpired(t *testing.T) {
+	// 未收款未过期 → active
+	endDate := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+	today := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	got := calc.ContractStatus(endDate, 0, 12000, today)
+	if got != calc.StatusActive {
+		t.Errorf("ContractStatus(未收款未过期) = %s, want %s", got, calc.StatusActive)
+	}
+}
+
+func TestContractStatus_PartialPaymentNotExpired(t *testing.T) {
+	// 部分收款未过期 → arrears
+	endDate := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+	today := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	got := calc.ContractStatus(endDate, 5000, 12000, today)
+	if got != calc.StatusArrears {
+		t.Errorf("ContractStatus(部分收款未过期) = %s, want %s", got, calc.StatusArrears)
+	}
+}
+
+func TestContractStatus_PriorityOrder(t *testing.T) {
+	// 综合优先级: paidup > expired > arrears > active
+	today := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name            string
+		endDate         time.Time
+		totalReceived   float64
+		totalReceivable float64
+		want            string
+	}{
+		{
+			name:            "paidup优先: 过期+缴清→paidup",
+			endDate:         time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   12000,
+			totalReceivable: 12000,
+			want:            calc.StatusPaidUp,
+		},
+		{
+			name:            "expired: 过期+未缴清→expired",
+			endDate:         time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   5000,
+			totalReceivable: 12000,
+			want:            calc.StatusExpired,
+		},
+		{
+			name:            "arrears: 未过期+部分收款→arrears",
+			endDate:         time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   3000,
+			totalReceivable: 12000,
+			want:            calc.StatusArrears,
+		},
+		{
+			name:            "active: 未过期+零收款→active",
+			endDate:         time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   0,
+			totalReceivable: 12000,
+			want:            calc.StatusActive,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calc.ContractStatus(tt.endDate, tt.totalReceived, tt.totalReceivable, today)
+			if got != tt.want {
+				t.Errorf("ContractStatus() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+// ── 新增: ListUnpaid 概念验证 ─────────────────────────────────────────────────
+// ListUnpaid 返回 status != "paidup" 的合同。
+// 此处验证 ContractStatus 的输出与 ListUnpaid 过滤逻辑的一致性。
+
+func TestListUnpaidConcept_AllStatusesExceptPaidUp(t *testing.T) {
+	today := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name            string
+		endDate         time.Time
+		totalReceived   float64
+		totalReceivable float64
+	shouldBeUnpaid  bool // ListUnpaid 应返回此合同
+	}{
+		{
+			name:            "active → 应在未缴清列表中",
+			endDate:         time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   0,
+			totalReceivable: 12000,
+			shouldBeUnpaid:  true,
+		},
+		{
+			name:            "arrears → 应在未缴清列表中",
+			endDate:         time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   5000,
+			totalReceivable: 12000,
+			shouldBeUnpaid:  true,
+		},
+		{
+			name:            "expired → 应在未缴清列表中",
+			endDate:         time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   5000,
+			totalReceivable: 12000,
+			shouldBeUnpaid:  true,
+		},
+		{
+			name:            "paidup → 不应在未缴清列表中",
+			endDate:         time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   12000,
+			totalReceivable: 12000,
+			shouldBeUnpaid:  false,
+		},
+		{
+			name:            "expired+paidup → 不应在未缴清列表中",
+			endDate:         time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+			totalReceived:   12000,
+			totalReceivable: 12000,
+			shouldBeUnpaid:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status := calc.ContractStatus(tt.endDate, tt.totalReceived, tt.totalReceivable, today)
+			isUnpaid := status != calc.StatusPaidUp
+			if isUnpaid != tt.shouldBeUnpaid {
+				t.Errorf("status=%s, isUnpaid=%v, want shouldBeUnpaid=%v", status, isUnpaid, tt.shouldBeUnpaid)
+			}
+		})
+	}
+}
