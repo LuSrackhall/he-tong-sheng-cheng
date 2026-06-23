@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api, { templateApi, authApi } from '../api'
+import { useToastStore } from '../stores/toast'
+
+const toast = useToastStore()
 
 interface Template {
   id: number
@@ -27,14 +30,14 @@ async function deleteTemplate(t: Template) {
   deleting.value[t.id] = true
   try {
     await templateApi.delete(t.id)
-    flash('模板已删除')
+    toast.success('模板已删除')
     await fetchTemplates()
   } catch (e: any) {
     const status = e.response?.status
     if (status === 409) {
-      flashError('该模板已被合同引用，无法删除')
+      toast.error('该模板已被合同引用，无法删除')
     } else {
-      flashError(e.response?.data?.error || '删除失败')
+      toast.error(e.response?.data?.error || '删除失败')
     }
   } finally {
     deleting.value[t.id] = false
@@ -67,7 +70,7 @@ async function changePassword() {
   changingPassword.value = true
   try {
     await authApi.changePassword(oldPassword.value, newPassword.value)
-    flash('密码修改成功')
+    toast.success('密码修改成功')
     oldPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
@@ -129,8 +132,6 @@ const saving = ref<Record<number, boolean>>({})
 const jsonErrors = ref<Record<number, string>>({})
 
 // Feedback
-const successMsg = ref('')
-const errorMsg = ref('')
 const uploadErrors = ref<Record<number, { msg: string; missingFields?: string[] }>>({})
 
 const presetFieldGroups = [
@@ -228,16 +229,6 @@ function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   } catch { return iso }
-}
-
-function flash(msg: string) {
-  successMsg.value = msg
-  setTimeout(() => { successMsg.value = '' }, 4000)
-}
-
-function flashError(msg: string) {
-  errorMsg.value = msg
-  setTimeout(() => { errorMsg.value = '' }, 5000)
 }
 
 async function fetchTemplates() {
@@ -358,10 +349,10 @@ async function createTemplate() {
     await templateApi.create(newTemplateName.value.trim())
     showCreate.value = false
     newTemplateName.value = ''
-    flash('模板创建成功，请上传 Word 文件并配置字段映射')
+    toast.success('模板创建成功，请上传 Word 文件并配置字段映射')
     await fetchTemplates()
   } catch (e: any) {
-    flashError(e.response?.data?.error || '创建失败')
+    toast.error(e.response?.data?.error || '创建失败')
   } finally {
     creating.value = false
   }
@@ -389,7 +380,7 @@ async function uploadFile(templateId: number, file: File) {
     await templateApi.uploadFile(templateId, file, (pct) => {
       uploadProgress.value[templateId] = pct
     })
-    flash(hasFile(templates.value.find((t) => t.id === templateId)!) ? '文件替换成功' : '文件上传成功')
+    toast.success(hasFile(templates.value.find((t) => t.id === templateId)!) ? '文件替换成功' : '文件上传成功')
     await fetchTemplates()
   } catch (e: any) {
     const errData = e.response?.data
@@ -555,12 +546,12 @@ async function saveMapping(t: Template) {
     const res = await templateApi.updateMapping(t.id, fieldMap, activeFields)
     if (res.data.filePath) {
       if (res.data.validated) {
-        flash('映射已保存，Word 文件校验通过')
+        toast.success('映射已保存，Word 文件校验通过')
       } else {
-        flashError('映射已保存，但 Word 文件校验未通过，请重新上传符合要求的 Word 文件')
+        toast.error('映射已保存，但 Word 文件校验未通过，请重新上传符合要求的 Word 文件')
       }
     } else {
-      flash('字段映射已保存')
+      toast.success('字段映射已保存')
     }
     await fetchTemplates()
   } catch (e: any) {
@@ -579,10 +570,6 @@ onMounted(fetchTemplates)
 
 <template>
   <div>
-    <!-- Success toast -->
-    <div v-if="successMsg" class="success-toast">{{ successMsg }}</div>
-    <div v-if="errorMsg" class="error-toast">{{ errorMsg }}</div>
-
     <!-- 修改密码 -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="card-header">
@@ -873,25 +860,6 @@ onMounted(fetchTemplates)
 </template>
 
 <style scoped>
-/* Toasts */
-.success-toast {
-  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-  background: var(--color-success); color: #fff; padding: 10px 24px;
-  border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 500;
-  z-index: 2000; box-shadow: var(--shadow-lg);
-  animation: toast-in 0.3s ease;
-}
-.error-toast {
-  position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
-  background: var(--color-danger); color: #fff; padding: 10px 24px;
-  border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 500;
-  z-index: 2000; box-shadow: var(--shadow-lg);
-  animation: toast-in 0.3s ease;
-}
-@keyframes toast-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
 
 /* Guide empty */
 .guide-empty { text-align: center; padding: var(--space-2xl); }
