@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { contractApi, paymentApi, receiptApi, type Contract, type Payment } from '../api'
 import { useToastStore } from '../stores/toast'
 import { useEscapeKey } from '../composables/useEscapeKey'
@@ -19,6 +19,7 @@ function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): 
 }
 
 const route = useRoute()
+const router = useRouter()
 
 const contracts = ref<Contract[]>([])
 const total = ref(0)
@@ -94,7 +95,12 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="page-header"><h2>收租金</h2></div>
+    <div class="page-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button v-if="route.query.contractId" class="btn btn-secondary btn-sm" @click="router.push('/arrears')">← 返回催缴清单</button>
+        <h2>收租金</h2>
+      </div>
+    </div>
 
     <div class="form-group" style="display: flex; gap: 12px; align-items: center;">
       <input class="input" v-model="search" @input="onSearchInput" placeholder="搜索租户名或资产名..." style="flex: 1;" />
