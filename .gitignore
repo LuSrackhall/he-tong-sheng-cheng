@@ -26,3 +26,4 @@ tmp/
 
 # Node (root-level guard)
 node_modules/
+.worktrees/
