@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { contractApi, type Contract } from '../api'
+import { useEscapeKey } from '../composables/useEscapeKey'
+import { useToastStore } from '../stores/toast'
+
+const toast = useToastStore()
+
+// Escape 键关闭弹窗
+useEscapeKey(() => { showDetail.value = false; showEditModal.value = false })
 
 function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
   let timer: ReturnType<typeof setTimeout>
@@ -24,6 +31,13 @@ const form = ref({ startDate: '', endDate: '', monthlyRent: 0, totalReceivable: 
 const saving = ref(false)
 const submitLock = ref(false)
 const errorMessage = ref('')
+
+const statusLabels: Record<string, string> = {
+  active: '执行中',
+  paidup: '已缴清',
+  arrears: '欠费中',
+  expired: '已到期',
+}
 
 async function fetchContracts() {
   const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }
@@ -54,6 +68,7 @@ async function save() {
     await contractApi.update(editing.value.id, form.value)
     showEditModal.value = false
     errorMessage.value = ''
+    toast.success('合同已更新')
     fetchContracts()
   } catch (err: any) {
     errorMessage.value = err.response?.data?.error || '保存失败，请重试'
@@ -111,7 +126,7 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 30
                 'badge-warning': c.status === 'active',
                 'badge-danger': c.status === 'arrears',
                 'badge-info': c.status === 'expired',
-              }">{{ c.status }}</span>
+              }">{{ statusLabels[c.status] || c.status }}</span>
             </td>
             <td>
               <button class="btn btn-secondary btn-sm" @click="openDetail(c)">详情</button>
@@ -148,7 +163,7 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 30
                   'badge-warning': detailContract.status === 'active',
                   'badge-danger': detailContract.status === 'arrears',
                   'badge-info': detailContract.status === 'expired',
-                }">{{ detailContract.status }}</span>
+                }">{{ statusLabels[detailContract.status] || detailContract.status }}</span>
               </td>
             </tr>
             <tr v-if="detailContract.notes"><td style="color: var(--color-text-secondary);">备注</td><td>{{ detailContract.notes }}</td></tr>

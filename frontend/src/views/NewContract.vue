@@ -409,6 +409,7 @@ async function createContract() {
     const { data } = await contractApi.create(payload)
     createdContract.value = data
     step.value = 4
+    toast.success('合同创建成功！')
   } catch (err: any) {
     errorMessage.value = err.response?.data?.error || '合同创建失败，请重试'
   } finally {

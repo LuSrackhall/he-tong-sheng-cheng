@@ -6,7 +6,8 @@ import api from '../api'
 const router = useRouter()
 
 const arrearsContracts = ref<any[]>([])
-const activeTab = ref(3)
+const loading = ref(true)
+const activeTab = ref(1)
 
 const tabs = [
   { level: 1, name: '应缴预警', color: 'var(--color-warning)' },
@@ -37,11 +38,14 @@ const levelCounts = computed(() => {
 })
 
 async function fetchArrears() {
+  loading.value = true
   try {
     const { data } = await api.get('/arrears')
     arrearsContracts.value = Array.isArray(data) ? data : (data as any).data || []
   } catch {
     // handled by interceptor
+  } finally {
+    loading.value = false
   }
 }
 
@@ -69,7 +73,8 @@ function goToCollect(c: any) {
       </button>
     </div>
 
-    <div v-if="filteredContracts.length === 0" class="empty-state">
+    <div v-if="loading" class="empty-state">加载中...</div>
+    <div v-else-if="filteredContracts.length === 0" class="empty-state">
       暂无{{ tabs.find(t => t.level === activeTab)?.name }}的合同
     </div>
 

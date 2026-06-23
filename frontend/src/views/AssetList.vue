@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { assetApi, contractApi, type Asset, type Contract } from '../api'
+import { useToastStore } from '../stores/toast'
+import { useEscapeKey } from '../composables/useEscapeKey'
+
+const toast = useToastStore()
+useEscapeKey(() => { showDetail.value = false; editing.value = false })
 
 function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
   let timer: ReturnType<typeof setTimeout>
@@ -76,6 +81,7 @@ async function save() {
   try {
     await assetApi.update(viewing.value.id, form.value)
     editing.value = false
+    toast.success('资产信息已更新')
     // Refresh viewing data
     const { data } = await assetApi.get(viewing.value.id)
     viewing.value = data

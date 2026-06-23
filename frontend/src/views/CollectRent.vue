@@ -2,6 +2,13 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { contractApi, paymentApi, type Contract, type Payment } from '../api'
+import { useToastStore } from '../stores/toast'
+import { useEscapeKey } from '../composables/useEscapeKey'
+
+const toast = useToastStore()
+
+// Escape 键关闭收款弹窗
+useEscapeKey(() => { showPayModal.value = false })
 
 function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
   let timer: ReturnType<typeof setTimeout>
@@ -55,11 +62,17 @@ async function recordPayment() {
   try {
     const { data } = await paymentApi.create(selectedContract.value.id, { amount: paymentAmount.value, notes: paymentNotes.value })
     shortfall.value = data.shortfall
+    const amount = paymentAmount.value
     paymentAmount.value = 0
     paymentNotes.value = ''
     const { data: pmts } = await paymentApi.list(selectedContract.value.id)
     payments.value = pmts
     fetchContracts()
+    if (data.shortfall <= 0) {
+      toast.success(`收款 ¥${amount.toLocaleString()}，该合同已缴清！`)
+    } else {
+      toast.success(`收款 ¥${amount.toLocaleString()}，还差 ¥${data.shortfall.toLocaleString()}`)
+    }
   } catch (err: any) {
     errorMessage.value = err.response?.data?.error || '收款失败，请重试'
   } finally {
