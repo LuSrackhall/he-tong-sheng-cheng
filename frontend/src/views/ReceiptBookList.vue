@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api from '../api'
+import { useEscapeKey } from '../composables/useEscapeKey'
+
+const statusLabels: Record<string, string> = { active: '使用中', full: '已用完', archived: '已作废' }
+useEscapeKey(() => { showCreate.value = false })
 
 interface ReceiptBook {
   id: number
@@ -78,7 +82,7 @@ onMounted(fetchBooks)
                 'badge-success': b.status === 'active',
                 'badge-info': b.status === 'full',
                 'badge-warning': b.status === 'archived',
-              }">{{ b.status }}</span>
+              }">{{ statusLabels[b.status] || b.status }}</span>
             </td>
             <td>{{ new Date(b.createdAt).toLocaleDateString('zh-CN') }}</td>
           </tr>

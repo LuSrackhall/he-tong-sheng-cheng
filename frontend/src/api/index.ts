@@ -85,6 +85,17 @@ export const paymentApi = {
     api.post<{ payment: Payment; shortfall: number }>(`/contracts/${contractId}/payments`, data),
 }
 
+export const receiptApi = {
+  print: async (paymentId: number) => {
+    const { data } = await api.get(`/print/receipt/${paymentId}`, { responseType: 'text' })
+    const w = window.open('', '_blank')
+    if (w) {
+      w.document.write(data)
+      w.document.close()
+    }
+  },
+}
+
 export const authApi = {
   login: (username: string, password: string) =>
     api.post<{ token: string; user: { id: number; username: string; role: string } }>('/auth/login', { username, password }),

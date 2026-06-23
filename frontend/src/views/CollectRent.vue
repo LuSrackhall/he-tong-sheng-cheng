@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { contractApi, paymentApi, type Contract, type Payment } from '../api'
+import { contractApi, paymentApi, receiptApi, type Contract, type Payment } from '../api'
 import { useToastStore } from '../stores/toast'
 import { useEscapeKey } from '../composables/useEscapeKey'
 
@@ -171,10 +171,11 @@ onMounted(() => {
 
         <h4 style="font-size: 0.875rem; margin-bottom: 8px;">收款记录</h4>
         <div v-if="payments.length === 0" style="font-size: 0.8125rem; color: var(--color-text-tertiary);">暂无收款记录</div>
-        <div v-for="p in payments" :key="p.id" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.875rem;">
+        <div v-for="p in payments" :key="p.id" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.875rem;">
           <span>¥{{ p.amount.toLocaleString() }}</span>
           <span style="color: var(--color-text-secondary);">{{ new Date(p.paidAt).toLocaleDateString('zh-CN') }}</span>
           <span style="color: var(--color-text-tertiary);">{{ p.notes }}</span>
+          <button class="btn btn-secondary btn-sm" @click="receiptApi.print(p.id)">打印收据</button>
         </div>
         <button class="btn btn-secondary" style="margin-top: 12px;" @click="showPayModal = false">关闭</button>
       </div>

@@ -33,6 +33,7 @@ func main() {
 	paymentH := handler.NewPaymentHandler(deps.PaymentRepo, deps.ContractRepo, deps.ReceiptBookRepo, deps.ReceiptRepo, deps.DB)
 	receiptBookH := handler.NewReceiptBookHandler(deps.ReceiptBookRepo)
 	arrearsH := handler.NewArrearsHandler(deps.ContractRepo)
+	printH := handler.NewPrintHandler(deps.ReceiptRepo, deps.ReceiptBookRepo, deps.PaymentRepo, deps.ContractRepo, deps.TenantRepo, deps.AssetRepo, deps.DB)
 
 	r := gin.New()
 
@@ -88,6 +89,8 @@ func main() {
 
 			protected.GET("/receipt-books", receiptBookH.List)
 			protected.POST("/receipt-books", receiptBookH.Create)
+
+			protected.GET("/print/receipt/:id", printH.PrintReceipt)
 
 			protected.GET("/arrears", arrearsH.List)
 		}

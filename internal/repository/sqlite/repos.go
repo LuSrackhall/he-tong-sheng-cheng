@@ -29,6 +29,12 @@ func (r *ReceiptRepo) GetByPaymentID(paymentID uint) (*domain.Receipt, error) {
 	return &rc, nil
 }
 
+func (r *ReceiptRepo) ListByReceiptBookID(bookID uint) ([]domain.Receipt, error) {
+	var receipts []domain.Receipt
+	err := r.db.Where("receipt_book_id = ?", bookID).Order("sequence_num desc").Find(&receipts).Error
+	return receipts, err
+}
+
 func (r *ReceiptBookRepo) Create(rb *domain.ReceiptBook) error {
 	return r.db.Create(rb).Error
 }
@@ -59,6 +65,24 @@ func (r *ReceiptBookRepo) GetActive() (*domain.ReceiptBook, error) {
 		return nil, err
 	}
 	return &rb, nil
+}
+
+func (r *ReceiptBookRepo) AllocateSequence(bookID uint) (int, error) {
+	// 原子递增 CurrentNum，避免并发冲突
+	result := r.db.Model(&domain.ReceiptBook{}).
+		Where("id = ? AND current_num < start_num + total_pages AND status = ?", bookID, "active").
+		Update("current_num", gorm.Expr("current_num + 1"))
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return 0, nil // 收据本已用完
+	}
+	var rb domain.ReceiptBook
+	if err := r.db.First(&rb, bookID).Error; err != nil {
+		return 0, err
+	}
+	return rb.CurrentNum, nil
 }
 
 func (r *TemplateRepo) Create(t *domain.Template) error {

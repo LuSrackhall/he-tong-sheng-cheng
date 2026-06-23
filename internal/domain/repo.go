@@ -37,6 +37,7 @@ type ReceiptRepo interface {
 	Create(r *Receipt) error
 	GetByID(id uint) (*Receipt, error)
 	GetByPaymentID(paymentID uint) (*Receipt, error)
+	ListByReceiptBookID(bookID uint) ([]Receipt, error)
 }
 
 type ReceiptBookRepo interface {
@@ -45,6 +46,7 @@ type ReceiptBookRepo interface {
 	List() ([]ReceiptBook, error)
 	Update(rb *ReceiptBook) error
 	GetActive() (*ReceiptBook, error)
+	AllocateSequence(bookID uint) (int, error)
 }
 
 type TemplateRepo interface {
