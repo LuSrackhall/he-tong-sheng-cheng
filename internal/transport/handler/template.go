@@ -319,6 +319,35 @@ func (h *ContractHandler) DeleteTemplate(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "模板已删除"})
 }
 
+// DownloadTemplate handles GET /api/templates/:id/download
+func (h *ContractHandler) DownloadTemplate(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		return
+	}
+
+	tpl, err := h.templateRepo.GetByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
+	}
+
+	if tpl.FilePath == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "模板文件尚未上传"})
+		return
+	}
+
+	if _, err := os.Stat(tpl.FilePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "模板文件不存在"})
+		return
+	}
+
+	filename := fmt.Sprintf("template_%s.docx", tpl.Name)
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	c.File(tpl.FilePath)
+}
+
 // buildReplaceValues collects all placeholder values from contract, asset, tenant data.
 func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[string]string {
 	values := make(map[string]string)

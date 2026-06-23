@@ -67,6 +67,7 @@ export const templateApi = {
   updateMapping: (id: number, fieldMap: string, activeFields: string) =>
     api.patch<Template>(`/templates/${id}`, { fieldMap, activeFields }),
   delete: (id: number) => api.delete<{ message: string }>(`/templates/${id}`),
+  download: (id: number) => api.get(`/templates/${id}/download`, { responseType: 'blob' }),
   uploadFile: (id: number, file: File, onProgress?: (pct: number) => void) => {
     const fd = new FormData()
     fd.append('file', file)

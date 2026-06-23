@@ -58,12 +58,12 @@ func (h *ContractHandler) Create(c *gin.Context) {
 		return
 	}
 
-	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	startDate, err := time.ParseInLocation("2006-01-02", req.StartDate, time.Local)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start date format, use YYYY-MM-DD"})
 		return
 	}
-	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	endDate, err := time.ParseInLocation("2006-01-02", req.EndDate, time.Local)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end date format, use YYYY-MM-DD"})
 		return
@@ -186,12 +186,12 @@ func (h *ContractHandler) Update(c *gin.Context) {
 		contract.Deposit = req.Deposit
 	}
 	if req.StartDate != "" {
-		if t, err := time.Parse("2006-01-02", req.StartDate); err == nil {
+		if t, err := time.ParseInLocation("2006-01-02", req.StartDate, time.Local); err == nil {
 			contract.StartDate = t
 		}
 	}
 	if req.EndDate != "" {
-		if t, err := time.Parse("2006-01-02", req.EndDate); err == nil {
+		if t, err := time.ParseInLocation("2006-01-02", req.EndDate, time.Local); err == nil {
 			contract.EndDate = t
 		}
 	}

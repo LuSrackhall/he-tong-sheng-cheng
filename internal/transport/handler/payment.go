@@ -65,7 +65,7 @@ func (h *PaymentHandler) Create(c *gin.Context) {
 
 	paidAt := time.Now()
 	if req.PaidAt != "" {
-		if t, err := time.Parse("2006-01-02", req.PaidAt); err == nil {
+		if t, err := time.ParseInLocation("2006-01-02", req.PaidAt, time.Local); err == nil {
 			paidAt = t
 		}
 	}

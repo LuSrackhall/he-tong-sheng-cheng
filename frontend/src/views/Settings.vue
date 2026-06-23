@@ -44,6 +44,23 @@ async function deleteTemplate(t: Template) {
   }
 }
 
+async function downloadTemplate(t: Template) {
+  try {
+    const response = await templateApi.download(t.id)
+    const url = window.URL.createObjectURL(new Blob([response.data as any]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `template_${t.name}.docx`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    toast.success('模板下载成功')
+  } catch {
+    toast.error('下载失败')
+  }
+}
+
 // Custom field modal state (per template)
 
 // 修改密码
@@ -634,6 +651,14 @@ onMounted(fetchTemplates)
             <span v-if="t.filePath && hasFile(t) && !isTemplateUsable(t)" class="unusable-hint">
               {{ templateUnusableReason(t) }}
             </span>
+            <button
+              v-if="hasFile(t)"
+              class="btn btn-secondary btn-sm"
+              style="margin-right: 8px;"
+              @click="downloadTemplate(t)"
+            >
+              下载模板
+            </button>
             <button
               class="btn-delete-template"
               :disabled="deleting[t.id]"

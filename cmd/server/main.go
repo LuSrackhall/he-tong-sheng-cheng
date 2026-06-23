@@ -82,6 +82,7 @@ func main() {
 			protected.POST("/templates", contractH.CreateTemplate)
 			protected.PATCH("/templates/:id", contractH.UpdateTemplateMapping)
 			protected.POST("/templates/:id/upload", contractH.UploadTemplate)
+			protected.GET("/templates/:id/download", contractH.DownloadTemplate)
 			protected.DELETE("/templates/:id", contractH.DeleteTemplate)
 
 			protected.POST("/contracts/:id/export", contractH.ExportContract)
