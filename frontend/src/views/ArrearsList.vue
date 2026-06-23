@@ -28,6 +28,14 @@ const filteredContracts = computed(() =>
   arrearsContracts.value.filter((c: any) => c.arrearsLevel === activeTab.value)
 )
 
+const levelCounts = computed(() => {
+  const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  for (const c of arrearsContracts.value) {
+    if (counts[c.arrearsLevel] !== undefined) counts[c.arrearsLevel]++
+  }
+  return counts
+})
+
 async function fetchArrears() {
   try {
     const { data } = await api.get('/arrears')
@@ -57,6 +65,7 @@ function goToCollect(c: any) {
         :style="activeTab === tab.level ? { background: tab.color, borderColor: tab.color } : {}"
       >
         {{ tab.name }}
+        <span v-if="levelCounts[tab.level] > 0" class="tab-badge" :style="activeTab === tab.level ? { background: 'rgba(255,255,255,0.3)' } : {}">{{ levelCounts[tab.level] }}</span>
       </button>
     </div>
 
@@ -96,3 +105,20 @@ function goToCollect(c: any) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  margin-left: 6px;
+}
+</style>

@@ -28,7 +28,7 @@ const saving = ref(false)
 const errorMessage = ref('')
 const submitLock = ref(false)
 
-const onlyArrears = ref(false)
+const onlyArrears = ref(true)
 
 async function fetchContracts() {
   const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }

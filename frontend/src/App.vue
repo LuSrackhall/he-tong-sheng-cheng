@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useAuthStore } from './stores/auth'
+import { useToastStore } from './stores/toast'
 import { watch, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from './api'
 
 const auth = useAuthStore()
+const toast = useToastStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -85,6 +87,17 @@ watch(() => auth.isLoggedIn, async (val) => {
   <div v-else class="guest-layout">
     <router-view />
   </div>
+
+  <!-- 全局 Toast 通知 -->
+  <Teleport to="body">
+    <div class="toast-container">
+      <TransitionGroup name="toast">
+        <div v-for="t in toast.toasts" :key="t.id" :class="['toast-item', `toast-${t.type}`]">
+          {{ t.message }}
+        </div>
+      </TransitionGroup>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -145,4 +158,39 @@ watch(() => auth.isLoggedIn, async (val) => {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
 }
+</style>
+
+<style>
+/* 全局 Toast 样式 */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-item {
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-width: 360px;
+}
+
+.toast-success { background: rgba(52, 199, 89, 0.92); }
+.toast-error { background: rgba(255, 59, 48, 0.92); }
+.toast-info { background: rgba(0, 122, 255, 0.92); }
+
+.toast-enter-active { transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); }
+.toast-leave-active { transition: all 0.25s ease-in; }
+.toast-enter-from { opacity: 0; transform: translateX(40px); }
+.toast-leave-to { opacity: 0; transform: translateY(-10px); }
 </style>
