@@ -652,6 +652,13 @@ onMounted(fetchTemplates)
               {{ templateUnusableReason(t) }}
             </span>
             <button
+              class="btn btn-secondary btn-sm"
+              style="margin-right: 4px;"
+              @click="templateApi.preview(t.id)"
+            >
+              预览
+            </button>
+            <button
               v-if="hasFile(t)"
               class="btn btn-secondary btn-sm"
               style="margin-right: 8px;"

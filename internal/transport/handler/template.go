@@ -3,6 +3,7 @@ package handler
 import (
 	"asset-leasing-system/internal/docx"
 	"asset-leasing-system/internal/domain"
+	"asset-leasing-system/internal/pdf"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -216,6 +217,80 @@ func (h *ContractHandler) DownloadContract(c *gin.Context) {
 	c.File(exportPath)
 }
 
+// PreviewContract handles GET /api/contracts/:id/preview
+func (h *ContractHandler) PreviewContract(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
+		return
+	}
+
+	contract, err := h.repo.GetByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
+		return
+	}
+
+	// 获取模板的 fieldMap（如果有关联模板）
+	var tpl *domain.Template
+	if contract.TemplateID != nil {
+		tpl, _ = h.templateRepo.GetByID(*contract.TemplateID)
+	}
+
+	values := buildReplaceValues(contract, tpl)
+
+	// 构建自定义字段
+	customFields := make(map[string]string)
+	if tpl != nil && tpl.FieldMap != "" {
+		fieldMap := make(map[string]string)
+		_ = json.Unmarshal([]byte(tpl.FieldMap), &fieldMap)
+		builtinKeys := map[string]bool{
+			"contractId": true, "startDate": true, "endDate": true,
+			"monthlyRent": true, "yearlyRent": true, "totalReceivable": true,
+			"totalReceived": true, "deposit": true, "notes": true, "status": true,
+			"assetName": true, "assetType": true, "assetDescription": true,
+			"tenantName": true, "tenantIDCard": true, "tenantPhone": true, "today": true,
+		}
+		for key, label := range fieldMap {
+			if !builtinKeys[key] {
+				if val, ok := values[key]; ok && val != "" {
+					customFields[label] = val
+				}
+			}
+		}
+	}
+
+	contractData := pdf.ContractData{
+		ContractID:       values["contractId"],
+		StartDate:        values["startDate"],
+		EndDate:          values["endDate"],
+		MonthlyRent:      values["monthlyRent"],
+		YearlyRent:       values["yearlyRent"],
+		TotalReceivable:  values["totalReceivable"],
+		TotalReceived:    values["totalReceived"],
+		Deposit:          values["deposit"],
+		Status:           values["status"],
+		Notes:            values["notes"],
+		TenantName:       values["tenantName"],
+		TenantIDCard:     values["tenantIDCard"],
+		TenantPhone:      values["tenantPhone"],
+		AssetName:        values["assetName"],
+		AssetType:        values["assetType"],
+		AssetDescription: values["assetDescription"],
+		Today:            values["today"],
+		CustomFields:     customFields,
+	}
+
+	html, err := pdf.GenerateContractHTML(contractData)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成合同预览失败"})
+		return
+	}
+
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.String(http.StatusOK, html)
+}
+
 // parseActiveFields parses the JSON active fields.
 // Supports both legacy []string format (converted to map with true values)
 // and new Record<string, boolean> format.
@@ -348,13 +423,79 @@ func (h *ContractHandler) DownloadTemplate(c *gin.Context) {
 	c.File(tpl.FilePath)
 }
 
+// PreviewTemplate handles GET /api/templates/:id/preview
+func (h *ContractHandler) PreviewTemplate(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		return
+	}
+
+	tpl, err := h.templateRepo.GetByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
+	}
+
+	// 构建字段列表
+	fields := []pdf.TemplatePreviewField{
+		{Key: "contractId", Label: "合同编号", Required: false},
+		{Key: "startDate", Label: "开始日期", Required: true},
+		{Key: "endDate", Label: "结束日期", Required: true},
+		{Key: "monthlyRent", Label: "月租金", Required: true},
+		{Key: "yearlyRent", Label: "年租金", Required: false},
+		{Key: "totalReceivable", Label: "应收总额", Required: false},
+		{Key: "totalReceived", Label: "已收金额", Required: false},
+		{Key: "deposit", Label: "押金", Required: false},
+		{Key: "notes", Label: "备注", Required: false},
+		{Key: "status", Label: "合同状态", Required: false},
+		{Key: "assetName", Label: "资产名称", Required: true},
+		{Key: "assetType", Label: "资产类型", Required: false},
+		{Key: "assetDescription", Label: "资产描述", Required: false},
+		{Key: "tenantName", Label: "租户姓名", Required: true},
+		{Key: "tenantIDCard", Label: "身份证号", Required: false},
+		{Key: "tenantPhone", Label: "联系电话", Required: false},
+		{Key: "today", Label: "当天日期", Required: false},
+	}
+
+	// 添加自定义字段
+	if tpl.FieldMap != "" {
+		fieldMap := make(map[string]string)
+		_ = json.Unmarshal([]byte(tpl.FieldMap), &fieldMap)
+		builtinKeys := map[string]bool{
+			"contractId": true, "startDate": true, "endDate": true,
+			"monthlyRent": true, "yearlyRent": true, "totalReceivable": true,
+			"totalReceived": true, "deposit": true, "notes": true, "status": true,
+			"assetName": true, "assetType": true, "assetDescription": true,
+			"tenantName": true, "tenantIDCard": true, "tenantPhone": true, "today": true,
+		}
+		for key, label := range fieldMap {
+			if !builtinKeys[key] {
+				fields = append(fields, pdf.TemplatePreviewField{Key: key, Label: label, Required: false})
+			}
+		}
+	}
+
+	html, err := pdf.GenerateTemplatePreviewHTML(pdf.TemplatePreviewData{
+		Name:   tpl.Name,
+		Fields: fields,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成模板预览失败"})
+		return
+	}
+
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.String(http.StatusOK, html)
+}
+
 // buildReplaceValues collects all placeholder values from contract, asset, tenant data.
 func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[string]string {
 	values := make(map[string]string)
 
 	// Parse fieldMap, stripping comment-prefixed lines
 	fieldMap := make(map[string]string)
-	if tpl.FieldMap != "" {
+	if tpl != nil && tpl.FieldMap != "" {
 		uncommented := strings.Builder{}
 		for _, line := range strings.Split(tpl.FieldMap, "\n") {
 			trimmed := strings.TrimSpace(line)

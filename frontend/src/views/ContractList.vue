@@ -209,6 +209,7 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 30
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button class="btn btn-primary btn-sm" @click="contractApi.preview(detailContract.id)">预览合同</button>
           <button class="btn btn-secondary btn-sm" @click="downloadContract(detailContract.id)">下载合同</button>
           <button class="btn btn-secondary btn-sm" @click="showDetail = false">关闭</button>
         </div>

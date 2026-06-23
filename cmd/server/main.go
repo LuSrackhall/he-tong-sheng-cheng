@@ -83,10 +83,12 @@ func main() {
 			protected.PATCH("/templates/:id", contractH.UpdateTemplateMapping)
 			protected.POST("/templates/:id/upload", contractH.UploadTemplate)
 			protected.GET("/templates/:id/download", contractH.DownloadTemplate)
+			protected.GET("/templates/:id/preview", contractH.PreviewTemplate)
 			protected.DELETE("/templates/:id", contractH.DeleteTemplate)
 
 			protected.POST("/contracts/:id/export", contractH.ExportContract)
 			protected.GET("/contracts/:id/download", contractH.DownloadContract)
+			protected.GET("/contracts/:id/preview", contractH.PreviewContract)
 
 			protected.GET("/receipt-books", receiptBookH.List)
 			protected.POST("/receipt-books", receiptBookH.Create)

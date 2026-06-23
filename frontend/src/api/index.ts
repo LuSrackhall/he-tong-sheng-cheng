@@ -49,6 +49,11 @@ export const contractApi = {
   update: (id: number, data: Partial<Contract>) => api.patch<Contract>(`/contracts/${id}`, data),
   export: (id: number) => api.post<{ message: string }>(`/contracts/${id}/export`),
   download: (id: number) => api.get(`/contracts/${id}/download`, { responseType: 'blob' }),
+  preview: async (id: number) => {
+    const { data } = await api.get(`/contracts/${id}/preview`, { responseType: 'text' })
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(data); w.document.close() }
+  },
 }
 
 export interface Template {
@@ -68,6 +73,11 @@ export const templateApi = {
     api.patch<Template>(`/templates/${id}`, { fieldMap, activeFields }),
   delete: (id: number) => api.delete<{ message: string }>(`/templates/${id}`),
   download: (id: number) => api.get(`/templates/${id}/download`, { responseType: 'blob' }),
+  preview: async (id: number) => {
+    const { data } = await api.get(`/templates/${id}/preview`, { responseType: 'text' })
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(data); w.document.close() }
+  },
   uploadFile: (id: number, file: File, onProgress?: (pct: number) => void) => {
     const fd = new FormData()
     fd.append('file', file)
