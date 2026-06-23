@@ -79,6 +79,9 @@ watch(() => auth.isLoggedIn, async (val) => {
         <router-link to="/receipt-books">
           <span>🧾</span> 收据本
         </router-link>
+        <router-link to="/receipts">
+          <span>📋</span> 收据记录
+        </router-link>
         <router-link v-if="auth.isAdmin" to="/users">
           <span>⚙️</span> 用户管理
         </router-link>

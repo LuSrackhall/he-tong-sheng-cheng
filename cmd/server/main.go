@@ -32,6 +32,7 @@ func main() {
 	contractH := handler.NewContractHandler(deps.ContractRepo, deps.TemplateRepo)
 	paymentH := handler.NewPaymentHandler(deps.PaymentRepo, deps.ContractRepo, deps.ReceiptBookRepo, deps.ReceiptRepo, deps.DB)
 	receiptBookH := handler.NewReceiptBookHandler(deps.ReceiptBookRepo)
+	receiptH := handler.NewReceiptHandler(deps.ReceiptRepo)
 	arrearsH := handler.NewArrearsHandler(deps.ContractRepo)
 	printH := handler.NewPrintHandler(deps.ReceiptRepo, deps.ReceiptBookRepo, deps.PaymentRepo, deps.ContractRepo, deps.TenantRepo, deps.AssetRepo, deps.DB)
 
@@ -99,6 +100,7 @@ func main() {
 
 			protected.GET("/receipt-books", receiptBookH.List)
 			protected.POST("/receipt-books", receiptBookH.Create)
+			protected.GET("/receipts", receiptH.ListReceipts)
 
 			protected.GET("/print/receipt/:id", printH.PrintReceipt)
 

@@ -116,6 +116,14 @@ func (r *ReceiptRepo) ListByReceiptBookID(bookID uint) ([]domain.Receipt, error)
 	return receipts, err
 }
 
+func (r *ReceiptRepo) List(offset, limit int) ([]domain.Receipt, int64, error) {
+	var receipts []domain.Receipt
+	var total int64
+	r.db.Model(&domain.Receipt{}).Count(&total)
+	err := r.db.Order("id desc").Offset(offset).Limit(limit).Find(&receipts).Error
+	return receipts, total, err
+}
+
 func (r *ReceiptBookRepo) Create(rb *domain.ReceiptBook) error {
 	return r.db.Create(rb).Error
 }

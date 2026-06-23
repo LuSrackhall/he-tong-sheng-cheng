@@ -38,6 +38,7 @@ type ReceiptRepo interface {
 	GetByID(id uint) (*Receipt, error)
 	GetByPaymentID(paymentID uint) (*Receipt, error)
 	ListByReceiptBookID(bookID uint) ([]Receipt, error)
+	List(offset, limit int) ([]Receipt, int64, error)
 }
 
 type ReceiptBookRepo interface {
