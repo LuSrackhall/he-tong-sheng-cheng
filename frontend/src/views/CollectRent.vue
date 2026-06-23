@@ -34,6 +34,7 @@ const payments = ref<Payment[]>([])
 const saving = ref(false)
 const errorMessage = ref('')
 const submitLock = ref(false)
+const lastPaymentId = ref<number | null>(null)
 
 const onlyArrears = ref(true)
 
@@ -51,6 +52,7 @@ async function openPayModal(c: Contract) {
   paymentAmount.value = 0
   paymentNotes.value = ''
   shortfall.value = 0
+  lastPaymentId.value = null
   const { data: pmts } = await paymentApi.list(c.id)
   payments.value = pmts
 }
@@ -62,6 +64,7 @@ async function recordPayment() {
   try {
     const { data } = await paymentApi.create(selectedContract.value.id, { amount: paymentAmount.value, notes: paymentNotes.value })
     shortfall.value = data.shortfall
+    lastPaymentId.value = data.payment.id
     const amount = paymentAmount.value
     paymentAmount.value = 0
     paymentNotes.value = ''
@@ -109,6 +112,7 @@ onMounted(() => {
           <div>
             <div style="font-weight: 600; font-size: 1rem;">{{ c.tenant?.name || '租户#' + c.tenantId }}</div>
             <div style="font-size: 0.8125rem; color: var(--color-text-secondary);">{{ c.asset?.name || '资产#' + c.assetId }} · ¥{{ c.monthlyRent }}/月</div>
+            <div style="font-size: 0.75rem; color: var(--color-text-tertiary);">{{ c.startDate?.substring(0, 10) }} ~ {{ c.endDate?.substring(0, 10) }}</div>
           </div>
           <div style="text-align: right;">
             <div style="font-weight: 600; color: var(--color-primary);">¥{{ c.totalReceived?.toLocaleString() }} / ¥{{ c.totalReceivable?.toLocaleString() }}</div>
@@ -144,6 +148,9 @@ onMounted(() => {
           <div style="font-size: 0.8125rem; color: var(--color-text-secondary);">
             {{ selectedContract.asset?.name || '资产#' + selectedContract.assetId }} · ¥{{ selectedContract.monthlyRent }}/月
           </div>
+          <div style="font-size: 0.8125rem; color: var(--color-text-tertiary); margin-top: 2px;">
+            租期：{{ selectedContract.startDate?.substring(0, 10) }} ~ {{ selectedContract.endDate?.substring(0, 10) }}
+          </div>
           <div style="margin-top: 8px; display: flex; gap: 16px;">
             <div><span style="color: var(--color-text-secondary);">已收：</span>¥{{ selectedContract.totalReceived?.toLocaleString() }}</div>
             <div><span style="color: var(--color-text-secondary);">应收：</span>¥{{ selectedContract.totalReceivable?.toLocaleString() }}</div>
@@ -153,6 +160,9 @@ onMounted(() => {
           </div>
           <div v-if="shortfall > 0" style="margin-top: 8px; color: var(--color-success); font-weight: 500;">
             本次收款后还差：¥{{ shortfall.toLocaleString() }}
+          </div>
+          <div v-if="lastPaymentId" style="margin-top: 8px;">
+            <button class="btn btn-primary btn-sm" @click="receiptApi.print(lastPaymentId)">打印收据</button>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { contractApi, type Contract } from '../api'
+import { contractApi, paymentApi, type Contract, type Payment } from '../api'
 import { useEscapeKey } from '../composables/useEscapeKey'
 import { useToastStore } from '../stores/toast'
 
@@ -25,6 +25,7 @@ const page = ref(0)
 const pageSize = 20
 const showDetail = ref(false)
 const detailContract = ref<Contract | null>(null)
+const detailPayments = ref<Payment[]>([])
 const showEditModal = ref(false)
 const editing = ref<Contract | null>(null)
 const form = ref({ startDate: '', endDate: '', monthlyRent: 0, totalReceivable: 0, deposit: 0, notes: '' })
@@ -46,7 +47,16 @@ async function fetchContracts() {
   contracts.value = data.data
   total.value = data.total
 }
-function openDetail(c: Contract) { detailContract.value = c; showDetail.value = true }
+async function openDetail(c: Contract) {
+  detailContract.value = c
+  showDetail.value = true
+  try {
+    const { data } = await paymentApi.list(c.id)
+    detailPayments.value = data
+  } catch {
+    detailPayments.value = []
+  }
+}
 function openEdit(c: Contract) {
   editing.value = c
   form.value = {
@@ -79,6 +89,23 @@ async function save() {
 }
 
 onMounted(fetchContracts)
+
+async function downloadContract(id: number) {
+  try {
+    const response = await contractApi.download(id)
+    const url = window.URL.createObjectURL(new Blob([response.data as any]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `contract-${id}.docx`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    toast.success('合同下载成功')
+  } catch {
+    toast.error('下载失败，可能尚未生成合同文件')
+  }
+}
 
 const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 300)
 </script>
@@ -131,6 +158,7 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 30
             <td>
               <button class="btn btn-secondary btn-sm" @click="openDetail(c)">详情</button>
               <button class="btn btn-secondary btn-sm" style="margin-left: 4px;" @click="openEdit(c)">编辑</button>
+              <button class="btn btn-secondary btn-sm" style="margin-left: 4px;" @click="downloadContract(c.id)">下载</button>
             </td>
           </tr>
         </tbody>
@@ -170,7 +198,20 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 30
             <tr><td style="color: var(--color-text-secondary);">创建时间</td><td>{{ new Date(detailContract.createdAt).toLocaleString('zh-CN') }}</td></tr>
           </tbody>
         </table>
-        <button class="btn btn-secondary" style="margin-top: 16px;" @click="showDetail = false">关闭</button>
+
+        <div v-if="detailPayments.length > 0" style="margin-top: 16px;">
+          <h4 style="font-size: 0.875rem; margin-bottom: 8px;">收款记录</h4>
+          <div v-for="p in detailPayments" :key="p.id" style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--color-border); font-size: 0.8125rem;">
+            <span>¥{{ p.amount.toLocaleString() }}</span>
+            <span style="color: var(--color-text-secondary);">{{ new Date(p.paidAt).toLocaleDateString('zh-CN') }}</span>
+            <span style="color: var(--color-text-tertiary);">{{ p.notes }}</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button class="btn btn-secondary btn-sm" @click="downloadContract(detailContract.id)">下载合同</button>
+          <button class="btn btn-secondary btn-sm" @click="showDetail = false">关闭</button>
+        </div>
       </div>
     </div>
 
