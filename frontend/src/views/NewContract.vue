@@ -2,6 +2,9 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { assetApi, tenantApi, contractApi, templateApi, type Asset, type Tenant, type Contract, type Template } from '../api'
+import { useToastStore } from '../stores/toast'
+
+const toast = useToastStore()
 
 const router = useRouter()
 
@@ -421,6 +424,9 @@ async function handleExport() {
   errorMessage.value = ''
   try {
     await contractApi.export(createdContract.value.id)
+    toast.success('合同文件已生成，正在下载...')
+    // 自动触发下载
+    await handleDownload()
   } catch (err: any) {
     if (err.response?.status === 409) {
       errorMessage.value = '模板校验未通过，请先在设置中重新上传符合要求的 Word 文件'
@@ -446,6 +452,7 @@ async function handleDownload() {
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
+    toast.success('下载完成，请用 Word 打开并打印')
   } catch (err: any) {
     errorMessage.value = err.response?.data?.error || '下载失败'
   } finally {
@@ -902,15 +909,18 @@ onMounted(fetchTemplates)
         </tbody>
       </table>
 
-      <div style="margin-top: 24px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="margin-top: 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
         <button class="btn btn-primary" :disabled="exporting" @click="handleExport">
-          {{ exporting ? '生成中...' : '生成合同文件' }}
+          {{ exporting ? '生成中...' : '生成并下载合同' }}
         </button>
         <button class="btn btn-secondary" :disabled="downloading" @click="handleDownload">
-          {{ downloading ? '下载中...' : '下载合同' }}
+          {{ downloading ? '下载中...' : '重新下载' }}
         </button>
         <button class="btn btn-primary" @click="resetAll">签下一份合同</button>
       </div>
+      <p style="margin-top: 12px; font-size: 0.8125rem; color: var(--color-text-tertiary);">
+        提示：下载的 Word 文件可直接用 Microsoft Office 或 WPS 打开并打印。
+      </p>
     </div>
   </div>
 </template>

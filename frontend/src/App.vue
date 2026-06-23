@@ -11,6 +11,7 @@ const route = useRoute()
 const router = useRouter()
 
 const templateCount = ref<number | null>(null)
+const sidebarOpen = ref(false)
 
 watch(() => auth.token, (val) => {
   if (val) {
@@ -36,9 +37,18 @@ watch(() => auth.isLoggedIn, async (val) => {
     <router-view />
   </div>
   <div v-else-if="auth.isLoggedIn" class="app-layout">
-    <aside class="sidebar">
+    <!-- 移动端顶部栏 -->
+    <div class="mobile-header">
+      <button class="hamburger" @click="sidebarOpen = !sidebarOpen">
+        <span></span><span></span><span></span>
+      </button>
+      <span class="mobile-title">租赁管家</span>
+    </div>
+    <!-- 侧边栏遮罩 -->
+    <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false"></div>
+    <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-logo">租赁管家</div>
-      <nav class="sidebar-nav">
+      <nav class="sidebar-nav" @click="sidebarOpen = false">
         <div class="nav-group-label">日常操作</div>
         <router-link to="/new-contract" class="nav-primary-action">
           <span>📝</span> 签新合同
