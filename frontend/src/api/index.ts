@@ -26,7 +26,7 @@ export default api
 export interface Asset { id: number; name: string; assetType: string; description?: string; status: string; extraFields?: string; createdAt: string }
 export interface Tenant { id: number; name: string; idCard?: string; phone?: string; idCardImage?: string; extraFields?: string; createdAt: string }
 export interface Contract { id: number; assetId: number; tenantId: number; asset?: Asset; tenant?: Tenant; startDate: string; endDate: string; monthlyRent: number; totalReceivable: number; totalReceived: number; deposit: number; status: string; notes?: string; createdAt: string }
-export interface Payment { id: number; contractId: number; amount: number; paidAt: string; notes?: string }
+export interface Payment { id: number; contractId: number; amount: number; paidAt: string; voided?: boolean; notes?: string }
 
 export const assetApi = {
   list: (params?: any) => api.get<{ data: Asset[]; total: number }>('/assets', { params }),
@@ -94,6 +94,7 @@ export const paymentApi = {
   list: (contractId: number) => api.get<Payment[]>(`/contracts/${contractId}/payments`),
   create: (contractId: number, data: { amount: number; paidAt?: string; notes?: string }) =>
     api.post<{ payment: Payment; shortfall: number }>(`/contracts/${contractId}/payments`, data),
+  void: (paymentId: number) => api.post<{ message: string }>(`/payments/${paymentId}/void`),
 }
 
 export const receiptApi = {

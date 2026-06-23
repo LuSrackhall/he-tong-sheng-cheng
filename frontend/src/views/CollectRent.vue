@@ -85,6 +85,23 @@ async function recordPayment() {
   }
 }
 
+async function voidPayment(p: Payment) {
+  if (!confirm(`确定撤销 ¥${p.amount.toLocaleString()} 的收款记录吗？\n\n撤销后合同已收金额将回退。`)) return
+  try {
+    await paymentApi.void(p.id)
+    toast.success('收款已撤销')
+    if (selectedContract.value) {
+      const { data: pmts } = await paymentApi.list(selectedContract.value.id)
+      payments.value = pmts
+      const { data: updated } = await contractApi.get(selectedContract.value.id)
+      selectedContract.value = updated
+    }
+    fetchContracts()
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '撤销失败')
+  }
+}
+
 onMounted(() => {
   // 从催缴清单跳转时，自动搜索指定合同
   const contractId = route.query.contractId as string
@@ -187,11 +204,14 @@ onMounted(() => {
 
         <h4 style="font-size: 0.875rem; margin-bottom: 8px;">收款记录</h4>
         <div v-if="payments.length === 0" style="font-size: 0.8125rem; color: var(--color-text-tertiary);">暂无收款记录</div>
-        <div v-for="p in payments" :key="p.id" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.875rem;">
+        <div v-for="p in payments" :key="p.id" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.875rem;" :style="p.voided ? { opacity: 0.5, textDecoration: 'line-through' } : {}">
           <span>¥{{ p.amount.toLocaleString() }}</span>
           <span style="color: var(--color-text-secondary);">{{ new Date(p.paidAt).toLocaleDateString('zh-CN') }}</span>
-          <span style="color: var(--color-text-tertiary);">{{ p.notes }}</span>
-          <button class="btn btn-secondary btn-sm" @click="receiptApi.print(p.id)">打印收据</button>
+          <span style="color: var(--color-text-tertiary);">{{ p.voided ? '已撤销' : p.notes }}</span>
+          <div style="display: flex; gap: 4px;">
+            <button v-if="!p.voided" class="btn btn-secondary btn-sm" @click="receiptApi.print(p.id)">打印收据</button>
+            <button v-if="!p.voided" class="btn btn-secondary btn-sm" style="color: var(--color-danger);" @click="voidPayment(p)">撤销</button>
+          </div>
         </div>
         <button class="btn btn-secondary" style="margin-top: 12px;" @click="showPayModal = false">关闭</button>
       </div>

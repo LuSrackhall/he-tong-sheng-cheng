@@ -83,6 +83,7 @@ func main() {
 
 			protected.GET("/contracts/:id/payments", paymentH.ListByContract)
 			protected.POST("/contracts/:id/payments", paymentH.Create)
+			protected.POST("/payments/:id/void", paymentH.VoidPayment)
 
 			protected.GET("/templates", contractH.ListTemplates)
 			protected.POST("/templates", contractH.CreateTemplate)

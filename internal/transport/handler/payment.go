@@ -3,6 +3,7 @@ package handler
 import (
 	"asset-leasing-system/internal/domain"
 	"asset-leasing-system/internal/domain/calc"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -112,4 +113,51 @@ func (h *PaymentHandler) Create(c *gin.Context) {
 		"payment":   payment,
 		"shortfall": shortfall,
 	})
+}
+
+// VoidPayment 撤销收款（POST /api/payments/:id/void）
+func (h *PaymentHandler) VoidPayment(c *gin.Context) {
+	paymentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的收款记录 ID"})
+		return
+	}
+
+	err = h.db.Transaction(func(tx *gorm.DB) error {
+		// 查找收款记录
+		var payment domain.Payment
+		if err := tx.First(&payment, paymentID).Error; err != nil {
+			return err
+		}
+
+		if payment.Voided {
+			return fmt.Errorf("该收款记录已被撤销")
+		}
+
+		// 标记为已撤销
+		payment.Voided = true
+		if err := tx.Save(&payment).Error; err != nil {
+			return err
+		}
+
+		// 回退合同已收金额
+		var contract domain.Contract
+		if err := tx.First(&contract, payment.ContractID).Error; err != nil {
+			return err
+		}
+
+		contract.TotalReceived -= payment.Amount
+		if contract.TotalReceived < 0 {
+			contract.TotalReceived = 0
+		}
+		contract.Status = calc.ContractStatus(contract.EndDate, contract.TotalReceived, contract.TotalReceivable, time.Now())
+		return tx.Save(&contract).Error
+	})
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "收款已撤销"})
 }
