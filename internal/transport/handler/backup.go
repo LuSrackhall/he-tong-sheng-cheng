@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// SQLite magic header
+var sqliteMagic = []byte("SQLite format 3\x00")
 
 type BackupHandler struct {
 	db     *gorm.DB
@@ -22,6 +26,11 @@ func NewBackupHandler(db *gorm.DB, dbPath string) *BackupHandler {
 
 // BackupInfo 返回数据库信息（GET /api/admin/backup/info）
 func (h *BackupHandler) BackupInfo(c *gin.Context) {
+	if h.dbPath == "" {
+		c.JSON(http.StatusOK, gin.H{"type": "postgres", "message": "PostgreSQL 模式请使用 pg_dump 工具备份"})
+		return
+	}
+
 	info := gin.H{
 		"type": "sqlite",
 		"path": h.dbPath,
@@ -38,17 +47,15 @@ func (h *BackupHandler) BackupInfo(c *gin.Context) {
 // Backup 生成并下载备份文件（POST /api/admin/backup）
 func (h *BackupHandler) Backup(c *gin.Context) {
 	if h.dbPath == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "当前为 PostgreSQL 模式，请使用 pg_dump 工具备份"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "PostgreSQL 模式请使用 pg_dump 工具备份"})
 		return
 	}
 
-	// 检查原始文件存在
 	if _, err := os.Stat(h.dbPath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "数据库文件不存在"})
 		return
 	}
 
-	// 使用 VACUUM INTO 生成干净备份
 	backupDir := "backups"
 	if err := os.MkdirAll(backupDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建备份目录失败"})
@@ -57,32 +64,30 @@ func (h *BackupHandler) Backup(c *gin.Context) {
 
 	backupPath := fmt.Sprintf("%s/backup_%s.db", backupDir, time.Now().Format("20060102_150405"))
 
-	// VACUUM INTO 会生成一个无碎片的干净副本
-	result := h.db.Exec(fmt.Sprintf("VACUUM INTO '%s'", backupPath))
+	// VACUUM INTO 生成无碎片干净副本
+	result := h.db.Exec("VACUUM INTO ?", backupPath)
 	if result.Error != nil {
-		// 回退方案：直接复制文件
+		// 回退：直接复制
 		if err := copyFile(h.dbPath, backupPath); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "备份失败: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "备份失败"})
 			return
 		}
 	}
 
-	// 获取文件信息
 	stat, err := os.Stat(backupPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "备份文件异常"})
 		return
 	}
 
-	// 返回文件下载
 	filename := fmt.Sprintf("租赁系统备份_%s.db", time.Now().Format("2006-01-02_150405"))
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	c.Header("Content-Length", fmt.Sprintf("%d", stat.Size()))
 	c.File(backupPath)
 
-	// 清理临时文件（延迟删除，给下载时间）
+	// 延迟清理
 	go func() {
-		time.Sleep(5 * time.Minute)
+		time.Sleep(10 * time.Minute)
 		os.Remove(backupPath)
 	}()
 }
@@ -90,31 +95,32 @@ func (h *BackupHandler) Backup(c *gin.Context) {
 // Restore 从上传的备份文件恢复（POST /api/admin/restore）
 func (h *BackupHandler) Restore(c *gin.Context) {
 	if h.dbPath == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "当前为 PostgreSQL 模式，请使用 psql 工具恢复"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "PostgreSQL 模式请使用 psql 工具恢复"})
 		return
 	}
 
-	// 必须带确认参数
-	confirmed := c.Query("confirmed")
-	if confirmed != "true" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "恢复操作需要确认，请传入 confirmed=true"})
+	if c.Query("confirmed") != "true" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "恢复操作需要确认"})
 		return
 	}
 
-	// 接收上传的文件
 	file, err := c.FormFile("backup")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请上传备份文件"})
 		return
 	}
 
-	// 验证文件大小（最大 500MB）
+	// 文件大小校验
+	if file.Size < 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "文件太小，不是有效的数据库备份"})
+		return
+	}
 	if file.Size > 500*1024*1024 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "备份文件过大（最大 500MB）"})
 		return
 	}
 
-	// 打开上传文件
+	// 读取并验证 SQLite magic header
 	src, err := file.Open()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法读取上传文件"})
@@ -122,42 +128,68 @@ func (h *BackupHandler) Restore(c *gin.Context) {
 	}
 	defer src.Close()
 
-	// 先备份当前数据库（以防恢复失败）
+	header := make([]byte, 16)
+	if _, err := io.ReadFull(src, header); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无法读取文件头"})
+		return
+	}
+	if !bytes.Equal(header, sqliteMagic) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "不是有效的 SQLite 数据库文件"})
+		return
+	}
+	// 重置读取位置
+	if seeker, ok := src.(io.Seeker); ok {
+		seeker.Seek(0, io.SeekStart)
+	}
+
+	// 备份当前数据库
 	currentBackup := h.dbPath + ".before_restore"
 	if err := copyFile(h.dbPath, currentBackup); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法备份当前数据库"})
 		return
 	}
 
-	// 关闭当前数据库连接
-	sqlDB, err := h.db.DB()
+	// P0-3: 先写入临时文件，成功后再原子 rename
+	tmpPath := h.dbPath + ".restore_tmp"
+	dst, err := os.Create(tmpPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法获取数据库连接"})
-		return
-	}
-	sqlDB.Close()
-
-	// 写入新文件
-	dst, err := os.Create(h.dbPath)
-	if err != nil {
-		// 恢复原来的文件
-		copyFile(currentBackup, h.dbPath)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法写入数据库文件"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法创建临时文件"})
 		return
 	}
 
 	if _, err := io.Copy(dst, src); err != nil {
 		dst.Close()
-		copyFile(currentBackup, h.dbPath)
+		os.Remove(tmpPath)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "写入备份数据失败"})
 		return
 	}
 	dst.Close()
 
+	// 关闭数据库连接
+	sqlDB, _ := h.db.DB()
+	if sqlDB != nil {
+		sqlDB.Close()
+	}
+
+	// 原子替换
+	if err := os.Rename(tmpPath, h.dbPath); err != nil {
+		// rename 失败，尝试恢复原文件
+		copyFile(currentBackup, h.dbPath)
+		os.Remove(tmpPath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "替换数据库文件失败，已恢复原数据"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "数据恢复成功，请重新启动服务",
+		"message":    "数据恢复成功，服务即将重启",
 		"backupFile": currentBackup,
 	})
+
+	// P0-1: 恢复成功后自动退出，避免后续请求使用已关闭的数据库
+	go func() {
+		time.Sleep(1 * time.Second)
+		os.Exit(0)
+	}()
 }
 
 func copyFile(src, dst string) error {

@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import api, { templateApi, authApi, backupApi } from '../api'
 import { useToastStore } from '../stores/toast'
+import { useAuthStore } from '../stores/auth'
 
 const toast = useToastStore()
+const auth = useAuthStore()
 
 interface Template {
   id: number
@@ -651,7 +653,7 @@ onMounted(fetchTemplates)
     </div>
 
     <!-- 数据管理（仅管理员） -->
-    <div v-if="true" class="card" style="margin-bottom: 24px;">
+    <div v-if="auth.isAdmin" class="card" style="margin-bottom: 24px;">
       <div class="card-header">
         <span class="template-name">数据管理</span>
       </div>
