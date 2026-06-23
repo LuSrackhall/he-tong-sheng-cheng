@@ -35,6 +35,12 @@ func main() {
 	arrearsH := handler.NewArrearsHandler(deps.ContractRepo)
 	printH := handler.NewPrintHandler(deps.ReceiptRepo, deps.ReceiptBookRepo, deps.PaymentRepo, deps.ContractRepo, deps.TenantRepo, deps.AssetRepo, deps.DB)
 
+	dbPath := ""
+	if cfg.Mode != "postgres" {
+		dbPath = cfg.DBName + ".db"
+	}
+	backupH := handler.NewBackupHandler(deps.DB, dbPath)
+
 	r := gin.New()
 
 	distSub, err := fs.Sub(distFS, "dist")
@@ -104,6 +110,10 @@ func main() {
 			admin.GET("/users", authH.ListUsers)
 			admin.POST("/users", authH.CreateUser)
 			admin.DELETE("/users/:id", authH.DeleteUser)
+
+			admin.GET("/backup/info", backupH.BackupInfo)
+			admin.POST("/backup", backupH.Backup)
+			admin.POST("/restore", backupH.Restore)
 		}
 	}
 

@@ -117,3 +117,25 @@ export const authApi = {
   createUser: (data: { username: string; password: string; role: string }) => api.post('/admin/users', data),
   deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
 }
+
+export const backupApi = {
+  info: () => api.get<{ type: string; path: string; size?: number; lastModified?: string }>('/admin/backup/info'),
+  backup: async () => {
+    const response = await api.post('/admin/backup', {}, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data as any]))
+    const link = document.createElement('a')
+    link.href = url
+    const disposition = response.headers['content-disposition']
+    const filename = disposition?.match(/filename="?(.+?)"?$/)?.[1] || `backup_${new Date().toISOString().slice(0, 10)}.db`
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  },
+  restore: (file: File) => {
+    const fd = new FormData()
+    fd.append('backup', file)
+    return api.post('/admin/restore?confirmed=true', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+}

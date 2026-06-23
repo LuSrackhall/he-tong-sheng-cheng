@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api, { templateApi, authApi } from '../api'
+import api, { templateApi, authApi, backupApi } from '../api'
 import { useToastStore } from '../stores/toast'
 
 const toast = useToastStore()
@@ -96,6 +96,44 @@ async function changePassword() {
   } finally {
     changingPassword.value = false
   }
+}
+
+// 数据备份
+const backingUp = ref(false)
+const restoring = ref(false)
+
+async function doBackup() {
+  backingUp.value = true
+  try {
+    await backupApi.backup()
+    toast.success('备份文件已下载')
+  } catch {
+    toast.error('备份失败')
+  } finally {
+    backingUp.value = false
+  }
+}
+
+function doRestore() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.db'
+  input.onchange = async (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    if (!confirm(`此操作将用「${file.name}」覆盖当前所有数据，且不可撤销。\n\n请确认已备份当前数据。是否继续？`)) return
+    if (!confirm('最后一次确认：恢复后需要重启服务。确定恢复？')) return
+    restoring.value = true
+    try {
+      await backupApi.restore(file)
+      toast.success('数据恢复成功，请重启服务后重新登录')
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || '恢复失败')
+    } finally {
+      restoring.value = false
+    }
+  }
+  input.click()
 }
 
 const showCustomField = ref<Record<number, boolean>>({})
@@ -610,6 +648,24 @@ onMounted(fetchTemplates)
         </button>
       </div>
       <div v-if="passwordError" style="padding: 0 16px 12px; color: var(--color-danger); font-size: 13px;">{{ passwordError }}</div>
+    </div>
+
+    <!-- 数据管理（仅管理员） -->
+    <div v-if="true" class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <span class="template-name">数据管理</span>
+      </div>
+      <div style="padding: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+        <button class="btn btn-primary" :disabled="backingUp" @click="doBackup">
+          {{ backingUp ? '备份中...' : '一键备份' }}
+        </button>
+        <button class="btn btn-secondary" :disabled="restoring" @click="doRestore">
+          {{ restoring ? '恢复中...' : '一键恢复' }}
+        </button>
+        <span style="font-size: 0.8125rem; color: var(--color-text-tertiary);">
+          备份将下载数据库文件，恢复需重启服务
+        </span>
+      </div>
     </div>
 
     <!-- Page header -->
