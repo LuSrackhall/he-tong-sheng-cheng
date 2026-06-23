@@ -8,8 +8,6 @@
 
 ## 团队成员
 
-当任务需要多角色协作时，按以下配置派遣 agent。**所有 agent 默认只读，不直接修改源代码。**
-
 | Agent 名称 | 角色 | 职责 | 权限 |
 |-----------|------|------|------|
 | `pm` | 产品经理 | 需求分析、优先级排序、功能完整性评估、验收标准 | 只读全部 |
@@ -26,66 +24,76 @@
 | `perf-analyst` | 性能瓶颈排查、数据库查询优化 |
 | `refactor-specialist` | 大规模重构（如 service 层抽取、代码去重） |
 
-## Agent 派遣规则
+## 强制工作流
 
-### 核心原则
+**每一次代码变更都必须经过以下流程，没有例外。**
 
-1. **审查用 agent，实施由主控执行** — agent 输出方案和审查意见，代码改动由 Claude 直接完成
-2. **并行最多 3 个 agent** — tmux 窗格有限，避免互相干扰
-3. **每轮改动后立即提交** — 锁定成果，防止 agent 回退
-4. **严格限制写入范围** — 每个 agent 有明确的文件边界
+### 流程步骤
 
-### 派遣模式
-
-**小改动（bug fix、配置微调）：**
-- 不派遣 agent，直接修改并提交
-
-**中等功能（新页面、新 API）：**
 ```
-pm 评估优先级 → 我执行改动 → reviewer 审查 → 我修复 → 提交
+步骤 1: 派遣 pm agent → 评估需求优先级，输出验收标准
+步骤 2: 派遣 architect agent → 输出技术方案（涉及哪些文件、API 设计、数据模型变更）
+步骤 3: 我执行代码改动
+步骤 4: 派遣 reviewer agent → 审查改动，输出发现的问题
+步骤 5: 修复 reviewer 发现的问题
+步骤 6: 派遣 qa agent → 验证功能正确性
+步骤 7: 派遣 doc-writer agent → 更新受影响的文档
+步骤 8: 提交
 ```
 
-**大型功能（新模块、架构变更）：**
-```
-myspec-br（pm + architect 参与设计）
-  → myspec-gwt（创建 worktree 隔离）
-    → myspec-apply（我在 worktree 中实施）
-      → myspec-verify（qa 验证 + 用户确认）
-        → myspec-merge（合并回 main）
-```
+### 跳过条件（仅此三种情况可跳过步骤 1-2）
 
-### 反模式（禁止）
+| 情况 | 可跳过 | 仍必须执行 |
+|------|--------|-----------|
+| 用户已明确给出完整技术方案（指定了文件、函数、修改内容） | 步骤 1-2 | 步骤 3-8 |
+| 修复编译错误（代码已正确，只是拼写/导入问题） | 步骤 1-4 | 步骤 3, 8 |
+| 纯文档修改（只改 docs/ 目录） | 步骤 1-5 | 步骤 3, 7, 8 |
 
-- ❌ agent 直接修改 `internal/domain/`、`internal/transport/`、`cmd/` 下的文件
+### 绝对禁止
+
+- ❌ 跳过 reviewer 直接提交代码改动
+- ❌ 跳过 qa 直接提交功能变更
+- ❌ 认定改动"太小不需要审查"——没有这种例外
+- ❌ agent 直接修改 `internal/` 或 `cmd/` 或 `frontend/src/` 下的源代码文件（agent 只读，只输出方案和审查意见）
 - ❌ 同时启动超过 3 个 agent
-- ❌ 让 agent 同时写入同一个文件
-- ❌ 跳过验证直接提交到 main
+- ❌ 让多个 agent 同时写入同一个文件
 
-## 文件保护
+## Agent 派遣规范
 
-以下文件为**高风险区域**，修改前必须先 `git stash`：
+### 并行限制
+- 同时最多 3 个 agent
+- tmux 窗格不足时串行派遣
+
+### 写入权限
+- **所有 agent 默认只读**，不直接修改源代码
+- agent 输出方案/审查意见，代码改动由我执行
+- 唯一例外：qa 可写 `tests/`，doc-writer 可写 `docs/`
+
+### 文件保护
+以下文件修改前必须先 `git stash`：
 - `internal/domain/` — 领域模型和仓库接口
 - `internal/di/` — 依赖注入
 - `cmd/server/main.go` — 路由注册
 - `internal/config/` — 配置管理
 
-## 开发工作流
+## 提交规范
 
-### 快速迭代模式（默认）
+- 每轮改动后立即提交，锁定成果
+- commit message 使用中文，格式：`type(scope): 描述`
+- 类型：feat / fix / refactor / docs / test / chore
 
+## 开发工作流（myspec）
+
+大型功能使用 myspec 流程：
 ```
-1. 用户提出需求
-2. 我评估复杂度，决定是否需要 agent
-3. 如需要 → 派遣 pm/architect 出方案
-4. 我执行代码改动
-5. 运行 go test + vue-tsc 验证
-6. git commit（中文 message）
-7. 如需要 → 派遣 reviewer 审查
-8. 修复审查发现的问题
-9. 交付
+myspec-br（需求分析+设计文档）
+  → myspec-gwt（创建 worktree 隔离）
+    → myspec-apply（在 worktree 中实施）
+      → myspec-verify（验证+用户确认）
+        → myspec-merge（合并回 main）
 ```
 
-### 发布前检查清单
+## 发布前检查清单
 
 - [ ] `go test ./... -count=1` 全部通过
 - [ ] `go build ./...` 编译通过
@@ -94,7 +102,7 @@ myspec-br（pm + architect 参与设计）
 - [ ] 启动服务验证健康检查
 - [ ] 端到端登录测试
 
-## 项目结构速查
+## 项目结构
 
 ```
 cmd/server/main.go          # 入口 + 路由 + go:embed
@@ -114,6 +122,7 @@ frontend/src/
   api/                       # Axios 封装
   stores/                    # Pinia 状态管理
   router/                    # 路由配置
+  composables/               # Vue 组合式函数
 docs/                        # 用户手册 + 部署指南 + API 文档
 tests/                       # E2E 测试 + 集成测试
 ```
