@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -208,7 +209,9 @@ func (h *ContractHandler) DownloadContract(c *gin.Context) {
 			time.Now().Format("20060102"))
 	}
 
-	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	// RFC 6266: 非 ASCII 文件名使用 filename*=UTF-8'' 编码
+	asciiFilename := fmt.Sprintf("contract_%d.docx", id)
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, asciiFilename, url.PathEscape(filename)))
 	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", outputData)
 }
 
