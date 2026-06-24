@@ -117,7 +117,6 @@ const saving = ref(false)
 const submitLock = ref(false)
 const errorMessage = ref('')
 const createdContract = ref<Contract | null>(null)
-const exporting = ref(false)
 const downloading = ref(false)
 
 // ---- computed ----
@@ -418,27 +417,7 @@ async function createContract() {
   }
 }
 
-// ---- Step 4: export & download ----
-async function handleExport() {
-  if (!createdContract.value || exporting.value) return
-  exporting.value = true
-  errorMessage.value = ''
-  try {
-    await contractApi.export(createdContract.value.id)
-    toast.success('合同文件已生成，正在下载...')
-    // 自动触发下载
-    await handleDownload()
-  } catch (err: any) {
-    if (err.response?.status === 409) {
-      errorMessage.value = '模板校验未通过，请先在设置中重新上传符合要求的 Word 文件'
-    } else {
-      errorMessage.value = err.response?.data?.error || '合同文件生成失败'
-    }
-  } finally {
-    exporting.value = false
-  }
-}
-
+// ---- Step 4: download ----
 async function handleDownload() {
   if (!createdContract.value || downloading.value) return
   downloading.value = true
@@ -455,7 +434,11 @@ async function handleDownload() {
     window.URL.revokeObjectURL(url)
     toast.success('下载完成，请用 Word 打开并打印')
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.error || '下载失败'
+    if (err.response?.status === 400) {
+      errorMessage.value = err.response?.data?.error || '模板校验未通过，请先在设置中重新上传符合要求的 Word 文件'
+    } else {
+      errorMessage.value = err.response?.data?.error || '下载失败'
+    }
   } finally {
     downloading.value = false
   }
@@ -911,11 +894,8 @@ onMounted(fetchTemplates)
       </table>
 
       <div style="margin-top: 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-        <button class="btn btn-primary" :disabled="exporting" @click="handleExport">
-          {{ exporting ? '生成中...' : '生成并下载合同' }}
-        </button>
-        <button class="btn btn-secondary" :disabled="downloading" @click="handleDownload">
-          {{ downloading ? '下载中...' : '重新下载' }}
+        <button class="btn btn-primary" :disabled="downloading" @click="handleDownload">
+          {{ downloading ? '下载中...' : '下载合同' }}
         </button>
         <button class="btn btn-primary" @click="resetAll">签下一份合同</button>
       </div>

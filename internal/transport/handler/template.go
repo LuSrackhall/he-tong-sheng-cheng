@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -100,42 +101,53 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 	c.JSON(http.StatusOK, tpl)
 }
 
-// ExportContract handles POST /api/contracts/:id/export
-func (h *ContractHandler) ExportContract(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
-		return
-	}
+// 预览 HTML 包裹模板
+const contractPreviewWrapper = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>合同预览</title>
+<style>
+  @page { size: A4 portrait; margin: 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Songti SC", "SimSun", "宋体", serif; font-size: 14px; color: #000; line-height: 1.8; }
+  .page { max-width: 700px; margin: 0 auto; padding: 20px; }
+  .hint-bar { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #856404; text-align: center; }
+  table { border-collapse: collapse; width: 100%%; margin: 8px 0; }
+  td, th { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+  p { margin: 4px 0; }
+  @media print { .no-print { display: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hint-bar">此为预览，精确格式请下载 Word 文件查看</div>
+  %s
+</div>
+<button class="no-print" onclick="window.print()" style="position:fixed;top:20px;right:20px;padding:12px 24px;background:#007AFF;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;z-index:1000;">打印 / 保存为 PDF</button>
+</body>
+</html>`
 
-	contract, err := h.repo.GetByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
-		return
-	}
-
+// validateContractForExport 校验合同是否满足导出条件（模板存在性、校验状态、必填字段）
+func (h *ContractHandler) validateContractForExport(contract *domain.Contract) (*domain.Template, []byte, error) {
 	if contract.TemplateID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Contract has no template assigned"})
-		return
+		return nil, nil, fmt.Errorf("该合同未关联模板，请先在设置中上传并关联模板")
 	}
 
 	tpl, err := h.templateRepo.GetByID(*contract.TemplateID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
-		return
+		return nil, nil, fmt.Errorf("模板不存在")
 	}
 
 	if tpl.FilePath == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Template file not uploaded yet"})
-		return
+		return nil, nil, fmt.Errorf("模板文件尚未上传")
 	}
 
 	if !tpl.Validated {
-		c.JSON(http.StatusConflict, gin.H{"error": "模板暂不可用：Word 文件校验未通过，请重新上传符合要求的 Word 文件"})
-		return
+		return nil, nil, fmt.Errorf("模板暂不可用：Word 文件校验未通过，请重新上传符合要求的 Word 文件")
 	}
 
-	// Check required active fields
+	// 检查必填字段
 	requiredFields := []string{"startDate", "endDate", "monthlyRent", "tenantName", "assetName"}
 	activeFields := parseActiveFields(tpl.ActiveFields)
 	activeSet := make(map[string]bool)
@@ -149,48 +161,19 @@ func (h *ContractHandler) ExportContract(c *gin.Context) {
 		}
 	}
 	if len(missingRequired) > 0 {
-		c.JSON(http.StatusConflict, gin.H{
-			"error":           fmt.Sprintf("模板暂不可用：缺少必填字段映射 %s，请在字段映射配置中启用", strings.Join(missingRequired, "、")),
-			"missingRequired": missingRequired,
-		})
-		return
+		return nil, nil, fmt.Errorf("模板暂不可用：缺少必填字段映射 %s，请在字段映射配置中启用", strings.Join(missingRequired, "、"))
 	}
 
 	templateData, err := os.ReadFile(tpl.FilePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read template file"})
-		return
+		return nil, nil, fmt.Errorf("无法读取模板文件")
 	}
 
-	values := buildReplaceValues(contract, tpl)
-
-	outputData, err := docx.Render(templateData, values)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to render document: " + err.Error()})
-		return
-	}
-
-	exportDir := "uploads/exports"
-	if err := os.MkdirAll(exportDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create export directory"})
-		return
-	}
-
-	exportPath := filepath.Join(exportDir, fmt.Sprintf("contract_%d.docx", id))
-	if err := os.WriteFile(exportPath, outputData, 0644); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save exported file"})
-		return
-	}
-
-	downloadURL := fmt.Sprintf("/api/contracts/%d/download", id)
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Contract exported successfully",
-		"downloadUrl": downloadURL,
-		"filePath":    exportPath,
-	})
+	return tpl, templateData, nil
 }
 
 // DownloadContract handles GET /api/contracts/:id/download
+// 每次请求动态生成 Word 文件返回
 func (h *ContractHandler) DownloadContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -198,26 +181,39 @@ func (h *ContractHandler) DownloadContract(c *gin.Context) {
 		return
 	}
 
-	exportPath := filepath.Join("uploads/exports", fmt.Sprintf("contract_%d.docx", id))
-
-	if _, err := os.Stat(exportPath); os.IsNotExist(err) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Exported file not found. Please export the contract first."})
+	contract, err := h.repo.GetByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
 		return
 	}
 
-	contract, err := h.repo.GetByID(uint(id))
+	tpl, templateData, err := h.validateContractForExport(contract)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	values := buildReplaceValues(contract, tpl)
+	outputData, err := docx.Render(templateData, values)
+	if err != nil {
+		log.Printf("生成合同文件失败 contract_id=%d: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成合同文件失败，请重试"})
+		return
+	}
+
 	filename := fmt.Sprintf("contract_%d.docx", id)
-	if err == nil && contract.Tenant != nil {
+	if contract.Tenant != nil && contract.Tenant.Name != "" {
 		filename = fmt.Sprintf("contract_%s_%s.docx",
 			contract.Tenant.Name,
 			time.Now().Format("20060102"))
 	}
 
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	c.File(exportPath)
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", outputData)
 }
 
 // PreviewContract handles GET /api/contracts/:id/preview
+// 动态生成 Word → 转 HTML → 包裹基础 CSS 后返回
 func (h *ContractHandler) PreviewContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -231,62 +227,28 @@ func (h *ContractHandler) PreviewContract(c *gin.Context) {
 		return
 	}
 
-	// 获取模板的 fieldMap（如果有关联模板）
-	var tpl *domain.Template
-	if contract.TemplateID != nil {
-		tpl, _ = h.templateRepo.GetByID(*contract.TemplateID)
-	}
-
-	values := buildReplaceValues(contract, tpl)
-
-	// 构建自定义字段
-	customFields := make(map[string]string)
-	if tpl != nil && tpl.FieldMap != "" {
-		fieldMap := make(map[string]string)
-		_ = json.Unmarshal([]byte(tpl.FieldMap), &fieldMap)
-		builtinKeys := map[string]bool{
-			"contractId": true, "startDate": true, "endDate": true,
-			"monthlyRent": true, "yearlyRent": true, "totalReceivable": true,
-			"totalReceived": true, "deposit": true, "notes": true, "status": true,
-			"assetName": true, "assetType": true, "assetDescription": true,
-			"tenantName": true, "tenantIDCard": true, "tenantPhone": true, "today": true,
-		}
-		for key, label := range fieldMap {
-			if !builtinKeys[key] {
-				if val, ok := values[key]; ok && val != "" {
-					customFields[label] = val
-				}
-			}
-		}
-	}
-
-	contractData := pdf.ContractData{
-		ContractID:       values["contractId"],
-		StartDate:        values["startDate"],
-		EndDate:          values["endDate"],
-		MonthlyRent:      values["monthlyRent"],
-		YearlyRent:       values["yearlyRent"],
-		TotalReceivable:  values["totalReceivable"],
-		TotalReceived:    values["totalReceived"],
-		Deposit:          values["deposit"],
-		Status:           values["status"],
-		Notes:            values["notes"],
-		TenantName:       values["tenantName"],
-		TenantIDCard:     values["tenantIDCard"],
-		TenantPhone:      values["tenantPhone"],
-		AssetName:        values["assetName"],
-		AssetType:        values["assetType"],
-		AssetDescription: values["assetDescription"],
-		Today:            values["today"],
-		CustomFields:     customFields,
-	}
-
-	html, err := pdf.GenerateContractHTML(contractData)
+	tpl, templateData, err := h.validateContractForExport(contract)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成合同预览失败"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	values := buildReplaceValues(contract, tpl)
+	renderedData, err := docx.Render(templateData, values)
+	if err != nil {
+		log.Printf("生成合同文件失败 contract_id=%d: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成合同文件失败，请重试"})
+		return
+	}
+
+	bodyHTML, err := docx.ToHTML(renderedData)
+	if err != nil {
+		log.Printf("合同转 HTML 失败 contract_id=%d: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "合同预览生成失败，请重试"})
+		return
+	}
+
+	html := fmt.Sprintf(contractPreviewWrapper, bodyHTML)
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	c.String(http.StatusOK, html)
 }

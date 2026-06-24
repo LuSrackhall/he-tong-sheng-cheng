@@ -102,8 +102,12 @@ async function downloadContract(id: number) {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
     toast.success('合同下载成功')
-  } catch {
-    toast.error('下载失败，可能尚未生成合同文件')
+  } catch (err: any) {
+    if (err.response?.status === 400) {
+      toast.error(err.response?.data?.error || '模板校验未通过')
+    } else {
+      toast.error('下载失败')
+    }
   }
 }
 

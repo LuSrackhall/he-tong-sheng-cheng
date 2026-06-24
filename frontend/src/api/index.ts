@@ -47,7 +47,6 @@ export const contractApi = {
   create: (data: Partial<Contract> & { templateId?: number }) => api.post<Contract>('/contracts', data),
   get: (id: number) => api.get<Contract>(`/contracts/${id}`),
   update: (id: number, data: Partial<Contract>) => api.patch<Contract>(`/contracts/${id}`, data),
-  export: (id: number) => api.post<{ message: string }>(`/contracts/${id}/export`),
   download: (id: number) => api.get(`/contracts/${id}/download`, { responseType: 'blob' }),
   preview: async (id: number) => {
     const { data } = await api.get(`/contracts/${id}/preview`, { responseType: 'text' })

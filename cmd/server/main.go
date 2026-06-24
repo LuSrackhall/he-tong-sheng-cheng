@@ -94,7 +94,6 @@ func main() {
 			protected.GET("/templates/:id/preview", contractH.PreviewTemplate)
 			protected.DELETE("/templates/:id", contractH.DeleteTemplate)
 
-			protected.POST("/contracts/:id/export", contractH.ExportContract)
 			protected.GET("/contracts/:id/download", contractH.DownloadContract)
 			protected.GET("/contracts/:id/preview", contractH.PreviewContract)
 
