@@ -417,6 +417,7 @@ func (h *ContractHandler) PreviewTemplate(c *gin.Context) {
 		{Key: "tenantName", Label: "租户姓名", Required: true},
 		{Key: "tenantIDCard", Label: "身份证号", Required: false},
 		{Key: "tenantPhone", Label: "联系电话", Required: false},
+		{Key: "signingDate", Label: "签订日期", Required: false},
 		{Key: "today", Label: "当天日期", Required: false},
 	}
 
@@ -429,7 +430,8 @@ func (h *ContractHandler) PreviewTemplate(c *gin.Context) {
 			"monthlyRent": true, "yearlyRent": true, "totalReceivable": true,
 			"totalReceived": true, "deposit": true, "notes": true, "status": true,
 			"assetName": true, "assetType": true, "assetDescription": true,
-			"tenantName": true, "tenantIDCard": true, "tenantPhone": true, "today": true,
+			"tenantName": true, "tenantIDCard": true, "tenantPhone": true,
+			"signingDate": true, "today": true,
 		}
 		for key, label := range fieldMap {
 			if !builtinKeys[key] {
@@ -500,6 +502,7 @@ func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[str
 		values["tenantPhone"] = ""
 	}
 
+	values["signingDate"] = contract.CreatedAt.Format("2006-01-02")
 	values["today"] = time.Now().Format("2006-01-02")
 
 	// Add all keys from fieldMap as values so custom fields get replaced

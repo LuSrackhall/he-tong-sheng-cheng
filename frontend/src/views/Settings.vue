@@ -194,7 +194,7 @@ const uploadErrors = ref<Record<number, { msg: string; missingFields?: string[] 
 const presetFieldGroups = [
   {
     category: '合同类',
-    fields: ['contractId', 'startDate', 'endDate', 'monthlyRent', 'yearlyRent', 'totalReceivable', 'totalReceived', 'deposit', 'status', 'notes'],
+    fields: ['contractId', 'startDate', 'endDate', 'monthlyRent', 'yearlyRent', 'totalReceivable', 'totalReceived', 'deposit', 'status', 'notes', 'signingDate'],
   },
   {
     category: '资产类',
@@ -228,6 +228,7 @@ const presetFieldLabels: Record<string, string> = {
   tenantIDCard: '身份证号',
   tenantPhone: '联系电话',
   today: '今日日期',
+  signingDate: '签订日期',
 }
 
 // These are bound to core form inputs that drive contract generation.
