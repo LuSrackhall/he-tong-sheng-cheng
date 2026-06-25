@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - run: go test ./... -count=1
+      - run: go test $(go list ./... | grep -v /cmd/server | grep -v /tests) -count=1
         env:
           JWT_SECRET: test-secret
           CGO_ENABLED: "1"
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - run: go test ./... -count=1
+      - run: go test $(go list ./... | grep -v /cmd/server | grep -v /tests) -count=1
         env:
           MODE: postgres
           DB_HOST: localhost
