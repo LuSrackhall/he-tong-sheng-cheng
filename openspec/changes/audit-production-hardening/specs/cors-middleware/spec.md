@@ -22,3 +22,4 @@
 #### Scenario: CORS_ORIGINS 设为通配符
 - **WHEN** 启动时 `CORS_ORIGINS=*`
 - **THEN** 所有来源的请求 SHALL 获得 CORS 允许头
+- **AND** 响应中 `Access-Control-Allow-Origin` SHALL 回显请求的 Origin（而非 `*`），以兼容 `AllowCredentials: true`

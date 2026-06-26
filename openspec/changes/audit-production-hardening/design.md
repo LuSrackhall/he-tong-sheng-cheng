@@ -51,6 +51,7 @@ backup.go BackupInfo 返回 `info["path"] = h.dbPath`，暴露服务器内部文
 2. 仅当 CORS_ORIGINS 非空时启用 cors 中间件（`github.com/gin-contrib/cors`）
 3. CORS_ORIGINS 格式：逗号分隔的 origin 列表，如 `https://example.com,https://app.example.com`
 4. 中间件放在 `gin.New()` 之后、路由之前
+5. `CORS_ORIGINS=*` 时使用 `AllowOriginFunc` 回显 Origin（而非 `AllowAllOrigins`），避免与 `AllowCredentials: true` 的 CORS 规范冲突
 
 **替代方案**: 硬编码允许所有 origin — 安全风险高，不采用。
 
@@ -58,7 +59,7 @@ backup.go BackupInfo 返回 `info["path"] = h.dbPath`，暴露服务器内部文
 
 auth.go:221 `userID.(uint)` 和其他 handler 中的类型断言可能 panic。
 
-**方案**: 统一提取 helper 函数 `getUintFromContext(c *gin.Context, key string) (uint, error)`，所有需要的地方调用此函数。包含 ok-check，失败返回 500。
+**方案**: 统一提取 helper 函数 `getUintFromContext(c *gin.Context, key string) (uint, error)`，所有需要的地方调用此函数。包含 ok-check：key 缺失时发送 401 响应，类型断言失败时发送 500 响应。
 
 ### D7: VoidPayment 状态码
 
@@ -95,9 +96,9 @@ sqlDB.SetConnMaxLifetime(0) // 永不回收
 arrears.go:34 `ListUnpaid()` 加载全部未付合同。
 
 **方案**:
-1. `ContractRepo.ListUnpaid` 改为 `ListUnpaidPaging(offset, limit int) ([]Contract, int64, error)`
+1. 新增 `ContractRepo.ListUnpaidPaging(offset, limit int) ([]Contract, int64, error)` 方法（保留原 ListUnpaid 兼容接口）
 2. arrears.go handler 使用 `parsePagination` 解析分页参数
-3. 前端 ArrearsList.vue 适配 `{data, total}` 响应格式，添加分页控件
+3. 后端返回 `{data, total}` 格式，前端已兼容该格式无需额外改动
 
 ### D12: 数据库索引
 
