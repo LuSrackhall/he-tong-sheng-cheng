@@ -30,7 +30,7 @@
 
 ## 5. 部署修复
 
-- [ ] 5.1 Dockerfile 非 root 用户：添加 appuser 并设置目录权限
+- [x] 5.1 Dockerfile 非 root 用户：添加 appuser 并设置目录权限
 
 ## 6. 验证
 
