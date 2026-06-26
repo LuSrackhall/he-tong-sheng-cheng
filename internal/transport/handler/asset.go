@@ -31,7 +31,7 @@ func (h *AssetHandler) List(c *gin.Context) {
 
 	assets, total, err := h.repo.List(search, assetType, offset, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list assets"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取资产列表失败"})
 		return
 	}
 
@@ -41,7 +41,7 @@ func (h *AssetHandler) List(c *gin.Context) {
 func (h *AssetHandler) Create(c *gin.Context) {
 	var req assetReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入资产名称"})
 		return
 	}
 	if req.AssetType == "" {
@@ -56,7 +56,7 @@ func (h *AssetHandler) Create(c *gin.Context) {
 		Status:      "idle",
 	}
 	if err := h.repo.Create(asset); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create asset"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建资产失败"})
 		return
 	}
 
@@ -66,13 +66,13 @@ func (h *AssetHandler) Create(c *gin.Context) {
 func (h *AssetHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid asset ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的资产 ID"})
 		return
 	}
 
 	asset, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "资产不存在"})
 		return
 	}
 
@@ -82,19 +82,19 @@ func (h *AssetHandler) Get(c *gin.Context) {
 func (h *AssetHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid asset ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的资产 ID"})
 		return
 	}
 
 	asset, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "资产不存在"})
 		return
 	}
 
 	var req assetReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求参数"})
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *AssetHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.repo.Update(asset); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update asset"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新资产失败"})
 		return
 	}
 

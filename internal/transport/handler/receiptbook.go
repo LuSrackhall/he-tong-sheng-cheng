@@ -33,7 +33,7 @@ type receiptBookReq struct {
 func (h *ReceiptBookHandler) List(c *gin.Context) {
 	books, err := h.repo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list receipt books"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取收据本列表失败"})
 		return
 	}
 
@@ -43,7 +43,7 @@ func (h *ReceiptBookHandler) List(c *gin.Context) {
 func (h *ReceiptBookHandler) Create(c *gin.Context) {
 	var req receiptBookReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Prefix and total pages are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入收据本前缀和总页数"})
 		return
 	}
 
@@ -59,7 +59,7 @@ func (h *ReceiptBookHandler) Create(c *gin.Context) {
 		Status:     "active",
 	}
 	if err := h.repo.Create(book); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create receipt book"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建收据本失败"})
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *ReceiptHandler) ListReceipts(c *gin.Context) {
 
 	receipts, total, err := h.repo.List(offset, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list receipts"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取收据列表失败"})
 		return
 	}
 

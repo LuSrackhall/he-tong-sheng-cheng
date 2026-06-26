@@ -1,15 +1,15 @@
 ## 1. 后端代码质量修复
 
-- [ ] 1.1 创建 `internal/repository/common/repos.go`，将 sqlite/ 和 postgres/ 中所有重复的 repo struct 定义、构造函数和方法实现移入
-- [ ] 1.2 精简 `internal/repository/sqlite/setup.go`，删除所有 repo struct 和方法，仅保留 Setup() 函数，使用 common 包的构造函数
-- [ ] 1.3 精简 `internal/repository/postgres/setup.go`，同上
-- [ ] 1.4 删除 sqlite/ 中不再需要的文件：repos.go、contract.go、payment.go、tenant.go
-- [ ] 1.5 删除 postgres/ 中不再需要的文件：repos.go、contract.go
-- [ ] 1.6 更新 `internal/di/` 包，改用 common 包的 repo 构造函数
-- [ ] 1.7 修复 AuthMiddleware 重复创建：AuthHandler 接收 `*middleware.AuthMiddleware` 而非 jwtSecret
-- [ ] 1.8 修复所有被 `_` 忽略的错误（setup.go 的 bcrypt hash、repos.go 的 Count 查询等）
-- [ ] 1.9 统一所有 handler 错误消息为中文（auth.go、tenant.go、contract.go、receiptbook.go 等）
-- [ ] 1.10 删除 config.go 中的 AIProviderURL 和 AIProviderKey 死代码
+- [x] 1.1 创建 `internal/repository/common/repos.go`，将 sqlite/ 和 postgres/ 中所有重复的 repo struct 定义、构造函数和方法实现移入
+- [x] 1.2 精简 `internal/repository/sqlite/setup.go`，删除所有 repo struct 和方法，仅保留 Setup() 函数，使用 common 包的构造函数
+- [x] 1.3 精简 `internal/repository/postgres/setup.go`，同上
+- [x] 1.4 删除 sqlite/ 中不再需要的文件：repos.go、contract.go、payment.go、tenant.go
+- [x] 1.5 删除 postgres/ 中不再需要的文件：repos.go、contract.go
+- [x] 1.6 更新 `internal/di/` 包，改用 common 包的 repo 构造函数
+- [x] 1.7 修复 AuthMiddleware 重复创建：AuthHandler 接收 `*middleware.AuthMiddleware` 而非 jwtSecret
+- [x] 1.8 修复所有被 `_` 忽略的错误（setup.go 的 bcrypt hash、repos.go 的 Count 查询等）
+- [x] 1.9 统一所有 handler 错误消息为中文（auth.go、tenant.go、contract.go、receiptbook.go 等）
+- [x] 1.10 删除 config.go 中的 AIProviderURL 和 AIProviderKey 死代码
 
 ## 2. 优雅关停
 

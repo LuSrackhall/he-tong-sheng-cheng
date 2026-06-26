@@ -26,7 +26,7 @@ func main() {
 	}
 
 	authmw := middleware.NewAuthMiddleware(cfg.JWTSecret)
-	authH := handler.NewAuthHandler(deps.UserRepo, cfg.JWTSecret)
+	authH := handler.NewAuthHandler(deps.UserRepo, authmw)
 	assetH := handler.NewAssetHandler(deps.AssetRepo)
 	tenantH := handler.NewTenantHandler(deps.TenantRepo)
 	contractH := handler.NewContractHandler(deps.ContractRepo, deps.TemplateRepo)

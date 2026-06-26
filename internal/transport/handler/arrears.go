@@ -33,7 +33,7 @@ type arrearsContract struct {
 func (h *ArrearsHandler) List(c *gin.Context) {
 	contracts, err := h.contractRepo.ListUnpaid()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list contracts"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取催缴清单失败"})
 		return
 	}
 
