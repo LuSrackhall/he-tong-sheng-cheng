@@ -8,7 +8,7 @@
 
 ## 核心原则
 
-1. **主会话 = 纯调度者**。不参与设计决策、不写业务代码、不进入 myspec 流程内部
+1. **主会话 = 纯调度者**。不参与设计决策、不写业务代码、不进入 myspec 流程内部。**不得执行任何 git 写操作**（merge / commit / checkout / rebase），仅可执行只读操作（log / diff / status / show）
 2. **每个 change 的完整生命周期由一个 myspec agent 执行**。通过 Skill 工具调用 myspec 技能链（br → propose → apply → verify → merge → archive），全程在同一 agent 中完成
 3. **myspec agent 按需自派答复团队**。myspec agent 拥有 Agent 工具，在需要时自行派遣 architect/reviewer/qa 等子智能体，用完即释放
 4. **上下文隔离**。不同 change 的 myspec agent 互相独立，防止跨 change 上下文污染
@@ -26,9 +26,10 @@
 │  主会话（纯调度者）                              │
 │  - 接收问题，派遣 myspec agent                  │
 │  - 管理多组 change 的并行状态                    │
-│  - 通过 SendMessage 调度合并时机（串行合入 main）│
+│  - 只读分析合入顺序（git diff/log）并通知调度    │
 │  - 汇总状态报告给用户                           │
 │  - 不进入设计/审查/验证决策                      │
+│  - 不执行任何 git 写操作                        │
 └────┬──────────────────────────────────────────┘
      │ 每组 change 派遣 1 个 myspec agent（仅此而已）
      │
@@ -67,10 +68,12 @@
 - **职责**：
   - 接收用户问题，派遣 myspec agent
   - 管理多个 change 的并行运行状态
-  - 调度合并时机：当 myspec agent 报告"就绪待合入"时，智能调度合入顺序（分析冲突、依赖、规模）
+  - 调度合并时机：当 myspec agent 报告"就绪待合入"时，**只读分析**合入顺序（git diff --stat / git log 分析冲突、依赖、规模），通过 SendMessage 通知合入顺序
   - 汇总各 change 的进度报告给用户
 - **不进入**：设计对话、代码审查、验证决策、工件生成
 - **不写业务代码**（trivial 修复除外：拼写错误、配置微调）
+- **不执行 git 写操作**：不得 merge / commit / checkout / rebase，即使 myspec agent 遇到障碍也不得绕过
+- **异常处理**：myspec agent 遇到障碍时，必须报告用户并等待用户决策，不得自行接管
 
 ### myspec agent — change 生命周期负责人
 
@@ -195,7 +198,7 @@ Phase 7: 归档
 
 - **串行合入**：同一时间只能有一个 change 处于合并流程（catchup → merge → archive → cleanup），完成后方可调度下一个
 - **myspec agent 主动请求**：完成验证后，myspec agent 通知主会话"就绪待合入"
-- **主会话智能调度**：主会话根据以下因素决定合入顺序（不按派遣顺序 FIFO）：
+- **主会话只读调度**：主会话根据以下因素决定合入顺序（不按派遣顺序 FIFO），仅通过 `git diff --stat` 和 `git log` 进行**只读分析**：
   - **冲突分析**：多个 change 修改相同文件时，先合入改动最小或最独立的，减少后续 catchup 冲突
   - **就绪状态**：已就绪的优先于未就绪的
   - **依赖关系**：如果 change B 依赖 change A 的代码，A 必须先合入
@@ -221,6 +224,8 @@ Phase 7: 归档
 - ❌ 不经 catchup 直接合入
 - ❌ 主会话进入设计决策或代码审查
 - ❌ 主会话预派遣答复团队（应由 myspec agent 按需自派）
+- ❌ **主会话执行 git 写操作**（merge / commit / checkout / rebase），即使是为了解决 myspec agent 的障碍
+- ❌ **主会话绕过 myspec 流程**。当 myspec agent 遇到障碍时，主会话必须报告用户并等待决策，不得自行接管或派遣非 myspec 的替代 agent
 - ❌ 答复团队只回答被问到的问题，不主动发现缺失
 - ❌ reviewer 只检查代码质量，不检查用户路径
 - ❌ qa 只验证技术功能，不走真实用户流程
