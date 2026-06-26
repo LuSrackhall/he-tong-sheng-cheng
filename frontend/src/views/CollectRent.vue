@@ -4,19 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { contractApi, paymentApi, receiptApi, type Contract, type Payment } from '../api'
 import { useToastStore } from '../stores/toast'
 import { useEscapeKey } from '../composables/useEscapeKey'
+import { useDebounce } from '../composables/useDebounce'
 
 const toast = useToastStore()
 
 // Escape 键关闭收款弹窗
 useEscapeKey(() => { showPayModal.value = false })
-
-function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
-  let timer: ReturnType<typeof setTimeout>
-  return ((...args: any[]) => {
-    clearTimeout(timer)
-    timer = setTimeout(() => fn(...args), delay)
-  }) as F
-}
 
 const route = useRoute()
 const router = useRouter()
@@ -38,13 +31,21 @@ const submitLock = ref(false)
 const lastPaymentId = ref<number | null>(null)
 
 const onlyArrears = ref(true)
+const loading = ref(false)
 
 async function fetchContracts() {
-  const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }
-  if (onlyArrears.value) params.status = 'arrears'
-  const { data } = await contractApi.list(params)
-  contracts.value = data.data
-  total.value = data.total
+  loading.value = true
+  try {
+    const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }
+    if (onlyArrears.value) params.status = 'arrears'
+    const { data } = await contractApi.list(params)
+    contracts.value = data.data
+    total.value = data.total
+  } catch {
+    toast.error('加载合同列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 300)
 async function openPayModal(c: Contract) {
@@ -54,8 +55,12 @@ async function openPayModal(c: Contract) {
   paymentNotes.value = ''
   shortfall.value = 0
   lastPaymentId.value = null
-  const { data: pmts } = await paymentApi.list(c.id)
-  payments.value = pmts
+  try {
+    const { data: pmts } = await paymentApi.list(c.id)
+    payments.value = pmts
+  } catch {
+    payments.value = []
+  }
 }
 async function recordPayment() {
   if (submitLock.value) return
@@ -127,9 +132,10 @@ onMounted(() => {
       </label>
     </div>
 
-    <div v-if="contracts.length === 0" class="empty-state">暂无匹配的合同</div>
+    <div v-if="loading" class="empty-state">加载中...</div>
+    <div v-else-if="contracts.length === 0" class="empty-state">暂无匹配的合同</div>
 
-    <div style="display: grid; gap: 12px;">
+    <div v-else style="display: grid; gap: 12px;">
       <div v-for="c in contracts" :key="c.id" class="card" style="padding: 16px; cursor: pointer;" @click="openPayModal(c)">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
           <div>

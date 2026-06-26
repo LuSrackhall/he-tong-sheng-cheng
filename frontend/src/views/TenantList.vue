@@ -3,17 +3,10 @@ import { ref, onMounted } from 'vue'
 import { tenantApi, contractApi, type Tenant, type Contract } from '../api'
 import { useToastStore } from '../stores/toast'
 import { useEscapeKey } from '../composables/useEscapeKey'
+import { useDebounce } from '../composables/useDebounce'
 
 const toast = useToastStore()
 useEscapeKey(() => { showDetail.value = false; editing.value = false })
-
-function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
-  let timer: ReturnType<typeof setTimeout>
-  return ((...args: any[]) => {
-    clearTimeout(timer)
-    timer = setTimeout(() => fn(...args), delay)
-  }) as F
-}
 
 const tenants = ref<Tenant[]>([])
 const total = ref(0)
@@ -32,10 +25,19 @@ const errorMessage = ref('')
 const relatedContracts = ref<Contract[]>([])
 const loadingContracts = ref(false)
 
+const loading = ref(false)
+
 async function fetchTenants() {
-  const { data } = await tenantApi.list({ search: search.value, offset: page.value * pageSize, limit: pageSize })
-  tenants.value = data.data
-  total.value = data.total
+  loading.value = true
+  try {
+    const { data } = await tenantApi.list({ search: search.value, offset: page.value * pageSize, limit: pageSize })
+    tenants.value = data.data
+    total.value = data.total
+  } catch {
+    toast.error('加载租户列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 function openDetail(t: Tenant) {
@@ -113,7 +115,12 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchTenants() }, 300)
       <input class="input" v-model="search" @input="onSearchInput" placeholder="搜索姓名/电话/身份证号..." />
     </div>
 
-    <div class="table-wrapper">
+    <div v-if="loading" class="empty-state">加载中...</div>
+    <div v-else-if="tenants.length === 0" class="empty-state">
+      {{ search ? '未找到匹配的租户' : '暂无租户数据' }}
+    </div>
+
+    <div v-else class="table-wrapper">
       <table>
         <thead>
           <tr>
