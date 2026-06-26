@@ -30,8 +30,8 @@
 - `internal/repository/sqlite/` — 删除大部分文件，仅保留 setup.go
 - `internal/repository/postgres/` — 删除大部分文件，仅保留 setup.go
 - `internal/repository/common/` — 新建，接收所有 repo 实现
-- `internal/transport/handler/` — auth.go、tenant.go、contract.go、receiptbook.go、backup.go、新增 dashboard.go
-- `internal/transport/middleware/` — 无变化
+- `internal/transport/handler/` — auth.go、tenant.go、contract.go、receiptbook.go、payment.go、arrears.go、asset.go、template.go、backup.go、新增 dashboard.go
+- `internal/transport/middleware/` — auth.go 错误消息中文化
 - `internal/config/config.go` — 删除死代码
 - `cmd/server/main.go` — 优雅关停、路由注册
 - `frontend/src/App.vue` — 侧边栏分组调整

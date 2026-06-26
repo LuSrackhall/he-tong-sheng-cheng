@@ -123,9 +123,9 @@ type BackupHandler struct {
 - `overdueContracts`：`COUNT(*) FROM contracts WHERE status = 'arrears'`
 - `newContractsThisMonth`：`COUNT(*) FROM contracts WHERE created_at >= 月初`
 
-需要在 domain 层添加 `DashboardStats` 结构体和 `DashboardRepo` 接口（或直接在 handler 中使用现有 repo 方法）。
+需要在 domain 层添加 `DashboardStats` 结构体和独立的 `DashboardRepo` 接口，避免污染现有 repo 接口。
 
-**选择在 handler 中直接聚合**：不新增 repo 接口，利用 ContractRepo 和 PaymentRepo 已有方法（ListActive、按日期过滤等），避免接口膨胀。如已有方法不够，新增必要的 repo 方法。
+**选择独立 DashboardRepo 接口**：新建 `domain.DashboardRepo` 接口和 `common.DashboardRepo` 实现，包含 CountActive、MonthlyRevenue、CountOverdue、CountNewThisMonth 方法。保持 ContractRepo 和 PaymentRepo 接口不变。
 
 ### 5. 侧边栏分组
 
