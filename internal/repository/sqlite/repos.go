@@ -198,5 +198,3 @@ var _ domain.ReceiptBookRepo = (*ReceiptBookRepo)(nil)
 var _ domain.TemplateRepo = (*TemplateRepo)(nil)
 var _ domain.UserRepo = (*UserRepo)(nil)
 var _ domain.ArrearsRecordRepo = (*ArrearsRecordRepo)(nil)
-
-var _ *gorm.DB = nil

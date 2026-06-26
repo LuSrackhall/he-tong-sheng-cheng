@@ -17,9 +17,9 @@
 
 ## 3. 基础设施安全
 
-- [ ] 3.1 修改 `internal/repository/sqlite/setup.go`，在 gorm.Open 后执行 WAL/foreign_keys/busy_timeout PRAGMA
-- [ ] 3.2 修改 `internal/repository/sqlite/setup.go` 和 `internal/repository/postgres/setup.go`，接收 password 参数，检查 bcrypt 错误
-- [ ] 3.3 删除 `internal/repository/sqlite/repos.go:202` 的 `var _ *gorm.DB = nil`
+- [x] 3.1 修改 `internal/repository/sqlite/setup.go`，在 gorm.Open 后执行 WAL/foreign_keys/busy_timeout PRAGMA
+- [x] 3.2 修改 `internal/repository/sqlite/setup.go` 和 `internal/repository/postgres/setup.go`，接收 password 参数，检查 bcrypt 错误
+- [x] 3.3 删除 `internal/repository/sqlite/repos.go:202` 的 `var _ *gorm.DB = nil`
 
 ## 4. 前端适配
 

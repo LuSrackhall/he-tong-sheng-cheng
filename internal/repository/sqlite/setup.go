@@ -3,18 +3,23 @@ package sqlite
 import (
 	"asset-leasing-system/internal/domain"
 	"log"
-	"os"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func Setup(dbPath string) (*gorm.DB, error) {
+func Setup(dbPath string, adminPassword string) (*gorm.DB, error) {
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
+
+	// 安全和性能 PRAGMA 配置
+	db.Exec("PRAGMA journal_mode=WAL")
+	db.Exec("PRAGMA foreign_keys=ON")
+	db.Exec("PRAGMA busy_timeout=5000")
+
 	if err := db.AutoMigrate(
 		&domain.Asset{},
 		&domain.Tenant{},
@@ -33,12 +38,10 @@ func Setup(dbPath string) (*gorm.DB, error) {
 	var count int64
 	db.Model(&domain.User{}).Count(&count)
 	if count == 0 {
-		seedPass := os.Getenv("ADMIN_PASSWORD")
-		if seedPass == "" {
-			seedPass = "admin123"
-			log.Println("WARNING: Using default admin password. Set ADMIN_PASSWORD env var for production.")
+		hash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("Failed to hash admin password: %v", err)
 		}
-		hash, _ := bcrypt.GenerateFromPassword([]byte(seedPass), bcrypt.DefaultCost)
 		db.Create(&domain.User{Username: "admin", Password: string(hash), Role: "admin"})
 	}
 
