@@ -13,7 +13,9 @@ type Config struct {
 	DBUser         string
 	DBPass         string
 	DBName         string
+	DBSSLMode      string
 	JWTSecret      string
+	AdminPassword  string
 	Port           string
 	UploadDir      string
 	AIProviderURL  string
@@ -50,6 +52,7 @@ func Load() *Config {
 		AIProviderURL:  envOrDefault("AI_PROVIDER_URL", ""),
 		AIProviderKey:  envOrDefault("AI_PROVIDER_KEY", ""),
 		DefaultCurrency: envOrDefault("DEFAULT_CURRENCY", "CNY"),
+		DBSSLMode:       envOrDefault("DB_SSLMODE", "disable"),
 	}
 
 	cfg.JWTSecret = os.Getenv("JWT_SECRET")
@@ -57,5 +60,11 @@ func Load() *Config {
 		log.Fatalf("FATAL: JWT_SECRET environment variable is required")
 	}
 
+	cfg.AdminPassword = os.Getenv("ADMIN_PASSWORD")
+	if cfg.AdminPassword == "" {
+		log.Fatalf("FATAL: ADMIN_PASSWORD environment variable is required")
+	}
+
 	return cfg
+}
 }

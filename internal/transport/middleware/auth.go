@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -40,6 +41,10 @@ func (m *AuthMiddleware) GenerateToken(userID uint, username, role string) (stri
 
 func (m *AuthMiddleware) ParseToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+		// 校验签名方法为 HMAC 系列，防止 alg:none 攻击
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
 		return m.Secret, nil
 	})
 	if err != nil {

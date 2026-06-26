@@ -2,6 +2,7 @@ package handler
 
 import (
 	"asset-leasing-system/internal/domain"
+	"asset-leasing-system/internal/security"
 	"asset-leasing-system/internal/transport/middleware"
 	"net/http"
 	"strconv"
@@ -13,12 +14,14 @@ import (
 type AuthHandler struct {
 	userRepo  domain.UserRepo
 	authmw    *middleware.AuthMiddleware
+	limiter   *security.LoginRateLimiter
 }
 
-func NewAuthHandler(userRepo domain.UserRepo, jwtSecret string) *AuthHandler {
+func NewAuthHandler(userRepo domain.UserRepo, jwtSecret string, limiter *security.LoginRateLimiter) *AuthHandler {
 	return &AuthHandler{
 		userRepo: userRepo,
 		authmw:   middleware.NewAuthMiddleware(jwtSecret),
+		limiter:  limiter,
 	}
 }
 
@@ -28,6 +31,14 @@ type loginReq struct {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
+	ip := c.ClientIP()
+
+	// 检查是否被限流
+	if !h.limiter.Allow(ip) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "登录尝试次数过多，请稍后再试"})
+		return
+	}
+
 	var req loginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password required"})
@@ -36,14 +47,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	user, err := h.userRepo.GetByUsername(req.Username)
 	if err != nil {
+		h.limiter.RecordFailure(ip)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		h.limiter.RecordFailure(ip)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
+
+	// 登录成功，清除失败记录
+	h.limiter.Reset(ip)
 
 	token, err := h.authmw.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {

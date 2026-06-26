@@ -4,6 +4,7 @@ import (
 	"embed"
 	"asset-leasing-system/internal/config"
 	"asset-leasing-system/internal/di"
+	"asset-leasing-system/internal/security"
 	"asset-leasing-system/internal/transport/handler"
 	"asset-leasing-system/internal/transport/middleware"
 	"io/fs"
@@ -26,7 +27,8 @@ func main() {
 	}
 
 	authmw := middleware.NewAuthMiddleware(cfg.JWTSecret)
-	authH := handler.NewAuthHandler(deps.UserRepo, cfg.JWTSecret)
+	loginLimiter := security.NewLoginRateLimiter()
+	authH := handler.NewAuthHandler(deps.UserRepo, cfg.JWTSecret, loginLimiter)
 	assetH := handler.NewAssetHandler(deps.AssetRepo)
 	tenantH := handler.NewTenantHandler(deps.TenantRepo)
 	contractH := handler.NewContractHandler(deps.ContractRepo, deps.TemplateRepo)
@@ -43,6 +45,7 @@ func main() {
 	backupH := handler.NewBackupHandler(deps.DB, dbPath)
 
 	r := gin.New()
+	r.MaxMultipartMemory = 10 << 20 // 10MB 请求体大小限制
 
 	distSub, err := fs.Sub(distFS, "dist")
 	if err != nil {

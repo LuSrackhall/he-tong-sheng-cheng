@@ -1,10 +1,10 @@
 ## 1. 认证安全
 
-- [ ] 1.1 在 `internal/config/config.go` 中新增 `ADMIN_PASSWORD` 和 `DBSSLMode` 字段，ADMIN_PASSWORD 未设置时 `log.Fatalf`
-- [ ] 1.2 修改 `internal/transport/middleware/auth.go` 的 `ParseToken`，在 keyFunc 中校验签名方法为 HMAC 系列
-- [ ] 1.3 新建 `internal/security/ratelimit.go`，实现 `LoginRateLimiter`（内存 map + mutex，5 分钟/5 次限制，后台清理 goroutine）
-- [ ] 1.4 修改 `internal/transport/handler/auth.go`，注入 rate limiter，登录失败时记录、成功时重置，超限时返回 429
-- [ ] 1.5 修改 `cmd/server/main.go`，创建 rate limiter 实例并注入 AuthHandler，启动 cleanup goroutine
+- [x] 1.1 在 `internal/config/config.go` 中新增 `ADMIN_PASSWORD` 和 `DBSSLMode` 字段，ADMIN_PASSWORD 未设置时 `log.Fatalf`
+- [x] 1.2 修改 `internal/transport/middleware/auth.go` 的 `ParseToken`，在 keyFunc 中校验签名方法为 HMAC 系列
+- [x] 1.3 新建 `internal/security/ratelimit.go`，实现 `LoginRateLimiter`（内存 map + mutex，5 分钟/5 次限制，后台清理 goroutine）
+- [x] 1.4 修改 `internal/transport/handler/auth.go`，注入 rate limiter，登录失败时记录、成功时重置，超限时返回 429
+- [x] 1.5 修改 `cmd/server/main.go`，创建 rate limiter 实例并注入 AuthHandler，启动 cleanup goroutine
 
 ## 2. 数据安全
 
