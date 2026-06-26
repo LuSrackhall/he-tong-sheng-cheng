@@ -23,7 +23,8 @@ RUN apk add --no-cache ca-certificates tzdata \
     && adduser -S appuser -G appgroup
 WORKDIR /app
 COPY --from=backend-builder /app/server .
-RUN chown appuser:appgroup /app/server
+RUN chown appuser:appgroup /app/server \
+    && mkdir -p uploads backups data && chown -R appuser:appgroup uploads backups data
 USER appuser
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

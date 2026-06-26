@@ -14,7 +14,7 @@ type Contract struct {
 	TotalReceivable float64   `json:"totalReceivable" gorm:"not null"`
 	TotalReceived   float64   `json:"totalReceived" gorm:"default:0"`
 	Deposit         float64   `json:"deposit" gorm:"default:0"`
-	Status          string    `json:"status" gorm:"default:'active'"`
+	Status          string    `json:"status" gorm:"default:'active';index"`
 	TemplateID      *uint     `json:"templateId,omitempty"`
 	Notes           string    `json:"notes,omitempty" gorm:"type:text"`
 	CreatedAt       time.Time `json:"createdAt"`

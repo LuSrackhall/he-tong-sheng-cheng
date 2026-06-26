@@ -88,6 +88,7 @@ func (h *TenantHandler) Get(c *gin.Context) {
 		return
 	}
 
+	tenant.IDCard = maskIDCard(tenant.IDCard)
 	c.JSON(http.StatusOK, tenant)
 }
 

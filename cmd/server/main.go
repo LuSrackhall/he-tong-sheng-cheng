@@ -13,9 +13,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -63,6 +65,37 @@ func main() {
 	r := gin.New()
 	r.MaxMultipartMemory = 10 << 20 // 10MB 请求体大小限制
 
+	// CORS 中间件（仅在配置了 CORS_ORIGINS 时启用）
+	if cfg.CORSOrigins != "" {
+		origins := strings.Split(cfg.CORSOrigins, ",")
+		for i := range origins {
+			origins[i] = strings.TrimSpace(origins[i])
+		}
+		corsConfig := cors.Config{
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+			ExposeHeaders:    []string{"Content-Length", "Content-Disposition"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}
+		if len(origins) == 1 && origins[0] == "*" {
+			// AllowAllOrigins + AllowCredentials 违反 CORS 规范，改用回显 Origin
+			corsConfig.AllowOriginFunc = func(origin string) bool {
+				return true
+			}
+		} else {
+			corsConfig.AllowOriginFunc = func(origin string) bool {
+				for _, o := range origins {
+					if o == origin {
+						return true
+					}
+				}
+				return false
+			}
+		}
+		r.Use(cors.New(corsConfig))
+	}
+
 	distSub, err := fs.Sub(distFS, "dist")
 	if err != nil {
 		log.Fatalf("Failed to open embedded dist: %v", err)
@@ -70,7 +103,11 @@ func main() {
 
 	// SPA middleware runs before routing to avoid gin's RedirectTrailingSlash
 	r.Use(middleware.SPAFallbackEmbed(distSub))
-	r.Use(gin.Logger(), gin.Recovery())
+	r.Use(gin.Logger())
+	r.Use(gin.CustomRecoveryWithWriter(nil, func(c *gin.Context, err any) {
+		log.Printf("[PANIC] %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "服务器内部错误"})
+	}))
 
 	api := r.Group("/api")
 	{

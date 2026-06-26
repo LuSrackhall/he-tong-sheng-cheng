@@ -35,7 +35,6 @@ func (h *BackupHandler) BackupInfo(c *gin.Context) {
 
 	info := gin.H{
 		"type": "sqlite",
-		"path": h.dbPath,
 	}
 
 	if stat, err := os.Stat(h.dbPath); err == nil {
@@ -168,13 +167,7 @@ func (h *BackupHandler) Restore(c *gin.Context) {
 	}
 	dst.Close()
 
-	// 关闭数据库连接
-	sqlDB, _ := h.db.DB()
-	if sqlDB != nil {
-		sqlDB.Close()
-	}
-
-	// 原子替换
+	// 原子替换（不手动关闭 DB，由优雅关停统一处理）
 	if err := os.Rename(tmpPath, h.dbPath); err != nil {
 		// rename 失败，尝试恢复原文件
 		copyFile(currentBackup, h.dbPath)

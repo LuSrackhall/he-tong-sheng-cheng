@@ -29,6 +29,14 @@ func Setup(dbPath string, adminPassword string) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	// 配置 SQLite 连接池（单写模型，MaxOpenConns=1 避免并发写入冲突）
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+
 	if err := db.AutoMigrate(
 		&domain.Asset{},
 		&domain.Tenant{},
