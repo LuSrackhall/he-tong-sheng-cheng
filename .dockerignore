@@ -1,0 +1,47 @@
+# 构建产物
+server
+cmd/server/dist
+coverage.out
+coverage.html
+
+# 前端依赖
+frontend/node_modules
+frontend/dist
+
+# 数据库文件
+*.db
+*.db-wal
+*.db-shm
+
+# 上传目录
+uploads/
+
+# Git
+.git
+.gitignore
+
+# IDE / 编辑器
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Docker / CI
+docker-compose*.yml
+Dockerfile
+.dockerignore
+.github
+
+# 文档 / 设计
+docs/
+openspec/
+*.md
+LICENSE
+
+# Claude 工具
+.claude
+.worktrees
+
+# 测试临时文件
+tests/

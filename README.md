@@ -7,44 +7,73 @@
 - **后端:** Go + Gin + GORM
 - **前端:** Vue 3 (Composition API) + TypeScript + Pinia + Vue Router
 - **数据库:** SQLite（本地单文件）/ PostgreSQL（服务器）
-- **构建:** Vite → `go:embed` 单一二进制部署
+- **构建:** Vite -> `go:embed` 单一二进制部署
 
 ## 快速启动
+
+### 本地开发（SQLite 模式）
 
 ```bash
 # 1. 构建前端（输出到 cmd/server/dist/）
 cd frontend && npm install && npm run build && cd ..
 
-# 2. 编译并启动服务（SQLite 模式）
-go build -o server ./cmd/server && ./server
+# 2. 编译并启动服务
+JWT_SECRET=dev-secret ADMIN_PASSWORD=admin123 go run ./cmd/server
 
 # 服务运行在 http://localhost:8080
 # 默认管理员账号: admin / admin123
 ```
 
-## 命令行参数
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--mode` | `sqlite` | 数据库模式：`sqlite` 或 `postgres` |
-| `--db-host` | `localhost` | PostgreSQL 主机地址 |
-| `--db-name` | `asset_leasing` | PostgreSQL 数据库名 |
-| `--port` | `8080` | 服务端口 |
-
-环境变量 `JWT_SECRET` 用于 JWT 签名密钥。
-
-## PostgreSQL 模式
+### Docker 部署（PostgreSQL 模式）
 
 ```bash
-./server --mode postgres --db-host 192.168.1.100 --db-name asset_leasing
+# 1. 设置环境变量
+export JWT_SECRET="your-secure-jwt-secret"
+export ADMIN_PASSWORD="your-secure-admin-password"
+
+# 2. 启动服务
+docker compose up -d
+
+# 3. 查看日志
+docker compose logs -f app
 ```
+
+### Make 命令
+
+```bash
+make build          # 构建前端+后端
+make dev            # 开发模式运行
+make test           # 运行所有测试
+make test-cover     # 运行测试并生成覆盖率报告
+make lint           # 代码质量检查（go vet + vue-tsc）
+make typecheck      # 类型检查（Go + TypeScript）
+make docker-build   # 构建 Docker 镜像
+make docker-up      # 启动 Docker Compose 服务
+make docker-down    # 停止 Docker Compose 服务
+make clean          # 清理构建产物
+```
+
+## 环境变量
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `JWT_SECRET` | 是 | - | JWT 签名密钥 |
+| `ADMIN_PASSWORD` | 是 | - | 初始管理员密码 |
+| `MODE` | 否 | `sqlite` | 数据库模式：`sqlite` 或 `postgres` |
+| `DB_HOST` | 否 | `localhost` | PostgreSQL 主机地址 |
+| `DB_PORT` | 否 | `5432` | PostgreSQL 端口 |
+| `DB_NAME` | 否 | `asset_leasing` | PostgreSQL 数据库名 |
+| `DB_PASS` | 否 | - | PostgreSQL 密码 |
+| `PORT` | 否 | `8080` | 服务端口 |
+
+也支持命令行参数（`--mode`, `--db-host` 等），环境变量优先。
 
 ## 功能概览
 
 ### 三大入口
-- **签新合同** — 分步表单：选资产 → 录租户 → 定合同 → 预览
-- **收租金** — 合同搜索 + 收款弹窗 + 还差多少
-- **催缴清单** — 五级分级（应缴预警/近期提醒/逾期催收/到期预警/欠费追缴）
+- **签新合同** -- 分步表单：选资产 -> 录租户 -> 定合同 -> 预览
+- **收租金** -- 合同搜索 + 收款弹窗 + 还差多少
+- **催缴清单** -- 五级分级（应缴预警/近期提醒/逾期催收/到期预警/欠费追缴）
 
 ### 后台管理
 - 资产管理、租户管理、合同管理
@@ -56,7 +85,7 @@ go build -o server ./cmd/server && ./server
 ```
 cmd/server/main.go          # 入口 + 路由 + go:embed
 internal/
-  config/                    # CLI 参数解析
+  config/                    # CLI 参数解析 + 环境变量
   di/                        # 依赖注入
   domain/                    # 实体 + Repository 接口
     calc/                    # 纯函数计算引擎（已测）
@@ -68,23 +97,37 @@ internal/
     middleware/               # JWT 认证 + SPA fallback
 frontend/
   src/
-    views/                   # 10 个 Vue 页面
+    views/                   # 12 个 Vue 页面
     api/                     # Axios 封装 + 接口类型
     stores/                  # Pinia 状态管理
     router/                  # 路由配置
-    styles/                  # Apple 设计系统
+tests/
+  api_test.go               # API 集成测试（Go）
+  calc_test.go              # 计算引擎测试（Go）
+  e2e.sh                    # 端到端 bash 测试脚本
 ```
 
 ## 开发
 
 ```bash
 # 后端
-go test ./...               # 运行测试
-go build ./...              # 检查编译
+make test                    # 运行测试
+make test-cover              # 测试覆盖率
 
 # 前端
 cd frontend
-npm run dev                 # Vite 开发服务器
-npx vue-tsc --noEmit       # TypeScript 类型检查
-npm run build               # 生产构建
+npm run dev                  # Vite 开发服务器
+npx vue-tsc --noEmit        # TypeScript 类型检查
+npm run build                # 生产构建
+```
+
+## 测试
+
+```bash
+# Go 单元测试 + 集成测试
+make test
+
+# API 集成测试（需要先启动服务）
+JWT_SECRET=test ADMIN_PASSWORD=admin123 go run ./cmd/server &
+bash tests/e2e.sh
 ```

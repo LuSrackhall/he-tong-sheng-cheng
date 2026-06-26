@@ -34,7 +34,7 @@ func Load() *Config {
 	flagDBPort := flag.String("db-port", "5432", "Database port")
 	flagDBUser := flag.String("db-user", "postgres", "Database user")
 	flagDBPass := flag.String("db-pass", "", "Database password")
-	flagDBName := flag.String("db-name", "design_platform", "Database name")
+	flagDBName := flag.String("db-name", "asset_leasing", "Database name")
 	flagPort := flag.String("port", "8080", "Server port")
 	flag.Parse()
 
