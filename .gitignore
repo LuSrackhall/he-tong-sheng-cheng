@@ -9,6 +9,8 @@ server
 
 # Database & uploads
 *.db
+*.db-shm
+*.db-wal
 uploads/
 
 # OS & editor
