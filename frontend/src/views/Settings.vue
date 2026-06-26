@@ -150,6 +150,20 @@ function openCustomFieldModal(templateId: number) {
   showCustomField.value[templateId] = true
 }
 
+
+async function copyToClipboard(_templateId: number, chipName: string) {
+  try {
+    await navigator.clipboard.writeText("${" + chipName + "}")
+    recentlyCopied.value = new Set([...recentlyCopied.value, chipName])
+    setTimeout(() => {
+      const next = new Set(recentlyCopied.value)
+      next.delete(chipName)
+      recentlyCopied.value = next
+    }, 1500)
+  } catch {
+    // 非安全上下文下静默降级
+  }
+}
 function addCustomField(templateId: number) {
   const name = (customFieldName.value[templateId] || '').trim()
   const label = (customFieldLabel.value[templateId] || '').trim()
@@ -187,6 +201,9 @@ const fileInputRefs = ref<Record<number, HTMLInputElement | null>>({})
 const mapping = ref<Record<number, string>>({})
 const saving = ref<Record<number, boolean>>({})
 const jsonErrors = ref<Record<number, string>>({})
+
+// 复制占位符到剪贴板
+const recentlyCopied = ref<Set<string>>(new Set())
 
 // Feedback
 const uploadErrors = ref<Record<number, { msg: string; missingFields?: string[] }>>({})
@@ -817,6 +834,14 @@ onMounted(fetchTemplates)
                   <span class="chip-label-text">→ {{ chip.label }}</span>
                 </button>
                 <button
+                  class="chip-copy"
+                  type="button"
+                  @click.stop="copyToClipboard(t.id, chip.name)"
+                  title="复制占位符">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  <span class="copy-tooltip" v-if="recentlyCopied.has(chip.name)">已复制</span>
+                </button>
+                <button
                   v-if="getMapKeys(t.id).includes(chip.name)"
                   :class="['chip-toggle', { on: isActive(t.id, chip.name) }]"
                   type="button"
@@ -1011,7 +1036,7 @@ onMounted(fetchTemplates)
 .preset-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
 .preset-category { font-size: 0.6875rem; color: var(--color-text-tertiary); font-weight: 500; margin-right: 2px; }
 
-.field-chip { display: inline-flex; align-items: center; border: 1px solid var(--color-border); border-radius: 14px; overflow: hidden; }
+.field-chip { position: relative; display: inline-flex; align-items: center; border: 1px solid var(--color-border); border-radius: 14px; overflow: visible; }
 .field-chip.field-in-map { border-color: var(--color-primary); }
 .field-chip.field-active { background: rgba(0,122,255,0.06); }
 
@@ -1021,6 +1046,32 @@ onMounted(fetchTemplates)
   cursor: pointer; line-height: 1.4;
 }
 .chip-label:hover { background: rgba(0,122,255,0.08); }
+
+.chip-copy {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; border: none; border-left: 1px solid var(--color-border);
+  background: transparent; cursor: pointer; color: var(--color-text-tertiary);
+  transition: all var(--transition-fast);
+}
+.chip-copy:hover { background: rgba(0,122,255,0.08); color: var(--color-primary); }
+
+.copy-tooltip {
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  padding: 3px 8px; background: #333; color: #fff; font-size: 0.6875rem; white-space: nowrap;
+  border-radius: 4px; pointer-events: none; z-index: 10;
+  animation: copy-fade 1.5s ease forwards;
+}
+.copy-tooltip::after {
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 4px solid transparent; border-top-color: #333;
+}
+@keyframes copy-fade {
+  0% { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 .chip-toggle {
   width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
