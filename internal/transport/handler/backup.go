@@ -34,7 +34,6 @@ func (h *BackupHandler) BackupInfo(c *gin.Context) {
 
 	info := gin.H{
 		"type": "sqlite",
-		"path": h.dbPath,
 	}
 
 	if stat, err := os.Stat(h.dbPath); err == nil {
@@ -65,8 +64,8 @@ func (h *BackupHandler) Backup(c *gin.Context) {
 
 	backupPath := fmt.Sprintf("%s/backup_%s.db", backupDir, time.Now().Format("20060102_150405"))
 
-	// VACUUM INTO 生成无碎片干净副本
-	result := h.db.Exec("VACUUM INTO ?", backupPath)
+	// VACUUM INTO 生成无碎片干净副本（路径由服务端生成，使用 Sprintf 安全构造）
+	result := h.db.Exec(fmt.Sprintf("VACUUM INTO '%s'", backupPath))
 	if result.Error != nil {
 		// 回退：直接复制
 		if err := copyFile(h.dbPath, backupPath); err != nil {
@@ -166,13 +165,7 @@ func (h *BackupHandler) Restore(c *gin.Context) {
 	}
 	dst.Close()
 
-	// 关闭数据库连接
-	sqlDB, _ := h.db.DB()
-	if sqlDB != nil {
-		sqlDB.Close()
-	}
-
-	// 原子替换
+	// 原子替换（不手动关闭 DB，由优雅关停统一处理）
 	if err := os.Rename(tmpPath, h.dbPath); err != nil {
 		// rename 失败，尝试恢复原文件
 		copyFile(currentBackup, h.dbPath)

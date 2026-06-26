@@ -1,12 +1,12 @@
 ## 1. 后端安全性修复
 
-- [ ] 1.1 修复 VACUUM INTO 路径构造：backup.go:69 改用 `fmt.Sprintf("VACUUM INTO '%s'", backupPath)`
-- [ ] 1.2 移除 Restore 手动关闭 DB 连接：backup.go 删除 `sqlDB.Close()` 调用
-- [ ] 1.3 移除 BackupInfo 暴露路径：backup.go 删除 `info["path"] = h.dbPath`
-- [ ] 1.4 租户 Get 接口身份证号脱敏：tenant.go Get 方法返回前调用 `maskIDCard()`
-- [ ] 1.5 新增 CORS 配置项：config.go 添加 `CORSOrigins` 字段（来源 CORS_ORIGINS 环境变量）
-- [ ] 1.6 新增 CORS 中间件：main.go 在路由前按需启用 gin-contrib/cors
-- [ ] 1.7 安装 gin-contrib/cors 依赖：`go get github.com/gin-contrib/cors`
+- [x] 1.1 修复 VACUUM INTO 路径构造：backup.go:69 改用 `fmt.Sprintf("VACUUM INTO '%s'", backupPath)`
+- [x] 1.2 移除 Restore 手动关闭 DB 连接：backup.go 删除 `sqlDB.Close()` 调用
+- [x] 1.3 移除 BackupInfo 暴露路径：backup.go 删除 `info["path"] = h.dbPath`
+- [x] 1.4 租户 Get 接口身份证号脱敏：tenant.go Get 方法返回前调用 `maskIDCard()`
+- [x] 1.5 新增 CORS 配置项：config.go 添加 `CORSOrigins` 字段（来源 CORS_ORIGINS 环境变量）
+- [x] 1.6 新增 CORS 中间件：main.go 在路由前按需启用 gin-contrib/cors
+- [x] 1.7 安装 gin-contrib/cors 依赖：`go get github.com/gin-contrib/cors`
 
 ## 2. 后端健壮性修复
 

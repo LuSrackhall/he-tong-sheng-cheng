@@ -19,6 +19,7 @@ type Config struct {
 	Port           string
 	UploadDir      string
 	DefaultCurrency string
+	CORSOrigins     string
 }
 
 func envOrDefault(key, fallback string) string {
@@ -49,6 +50,7 @@ func Load() *Config {
 		UploadDir:      envOrDefault("UPLOAD_DIR", "./uploads"),
 		DefaultCurrency: envOrDefault("DEFAULT_CURRENCY", "CNY"),
 		DBSSLMode:       envOrDefault("DB_SSLMODE", "disable"),
+		CORSOrigins:     os.Getenv("CORS_ORIGINS"),
 	}
 
 	cfg.JWTSecret = os.Getenv("JWT_SECRET")
