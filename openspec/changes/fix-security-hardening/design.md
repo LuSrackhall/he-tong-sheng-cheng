@@ -45,12 +45,11 @@ func(t *jwt.Token) (interface{}, error) {
   type loginAttempt struct {
       count    int
       firstAt  time.Time
-      blockedUntil time.Time
   }
 
 逻辑：
-  - Allow(ip) 检查：blockedUntil > now → 拒绝；firstAt + 5min < now → 重置计数
-  - RecordFailure(ip)：count++，首次记录 firstAt；count >= 5 → 设置 blockedUntil = now + 5min
+  - Allow(ip) 检查：firstAt + 5min < now → 重置；count >= 5 → 拒绝
+  - RecordFailure(ip)：count++，首次记录 firstAt；窗口过期则重置计数
   - Reset(ip)：登录成功后清除记录
   - Cleanup()：每 10 分钟删除 firstAt + 5min < now 的条目
 
@@ -74,10 +73,10 @@ func(t *jwt.Token) (interface{}, error) {
 
 ```go
 func maskIDCard(idCard string) string {
-    if len(idCard) <= 6 {
+    if len(idCard) <= 8 {
         return idCard
     }
-    // 保留前4位和后4位，中间替换为 ****
+    // 保留前4位和后4位，中间替换为 *
     prefix := idCard[:4]
     suffix := idCard[len(idCard)-4:]
     return prefix + strings.Repeat("*", len(idCard)-8) + suffix

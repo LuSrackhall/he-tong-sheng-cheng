@@ -5,7 +5,7 @@
 ## What Changes
 
 1. **默认管理员密码强制配置** — 未设置 `ADMIN_PASSWORD` 环境变量时服务拒绝启动（**BREAKING**：部署流程需更新）
-2. **JWT 签名算法校验** — `ParseToken` 中显式限制为 HS256，防止 alg:none 攻击
+2. **JWT 签名算法校验** — `ParseToken` 中显式限制为 HMAC 系列（HS256/HS384/HS512），防止 alg:none 攻击
 3. **登录暴力破解防护** — 新增基于 IP 的 rate limiter（内存 map + mutex，5 分钟 5 次限制）
 4. **租户身份证号脱敏** — List 接口返回时身份证号中间部分替换为 `****`
 5. **请求体大小限制** — 设置 `MaxMultipartMemory = 10MB`
