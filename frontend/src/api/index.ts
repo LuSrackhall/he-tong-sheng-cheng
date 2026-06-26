@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useToastStore } from '../stores/toast'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -16,6 +17,15 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('token')
       window.location.hash = '#/login'
+      return Promise.reject(err)
+    }
+    // 全局兜底：5xx 和网络错误显示 toast
+    if (!err.response) {
+      const toast = useToastStore()
+      toast.error('网络连接失败，请检查网络')
+    } else if (err.response.status >= 500) {
+      const toast = useToastStore()
+      toast.error('服务器错误，请稍后重试')
     }
     return Promise.reject(err)
   },
