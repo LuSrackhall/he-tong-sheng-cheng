@@ -6,8 +6,14 @@ import (
 	"asset-leasing-system/internal/di"
 	"asset-leasing-system/internal/transport/handler"
 	"asset-leasing-system/internal/transport/middleware"
+	"context"
 	"io/fs"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,6 +31,10 @@ func main() {
 		log.Println("Running in SQLite mode")
 	}
 
+	// 优雅关停 channel
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	authmw := middleware.NewAuthMiddleware(cfg.JWTSecret)
 	authH := handler.NewAuthHandler(deps.UserRepo, authmw)
 	assetH := handler.NewAssetHandler(deps.AssetRepo)
@@ -40,7 +50,12 @@ func main() {
 	if cfg.Mode != "postgres" {
 		dbPath = cfg.DBName + ".db"
 	}
-	backupH := handler.NewBackupHandler(deps.DB, dbPath)
+
+	// 传递优雅关停函数给 BackupHandler
+	shutdownFn := func() {
+		quit <- syscall.SIGTERM
+	}
+	backupH := handler.NewBackupHandler(deps.DB, dbPath, shutdownFn)
 
 	r := gin.New()
 
@@ -119,8 +134,29 @@ func main() {
 		}
 	}
 
-	log.Printf("Server starting on :%s\n", cfg.Port)
-	if err := r.Run(":" + cfg.Port); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	srv := &http.Server{
+		Addr:    ":" + cfg.Port,
+		Handler: r,
 	}
+
+	// 启动服务器（非阻塞）
+	go func() {
+		log.Printf("服务器启动，监听端口 :%s\n", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("服务器启动失败: %v", err)
+		}
+	}()
+
+	// 等待关闭信号
+	<-quit
+	log.Println("收到关闭信号，正在优雅关停...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("服务器关闭失败: %v", err)
+	}
+
+	log.Println("服务器已关闭")
 }

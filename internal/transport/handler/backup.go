@@ -16,12 +16,13 @@ import (
 var sqliteMagic = []byte("SQLite format 3\x00")
 
 type BackupHandler struct {
-	db     *gorm.DB
-	dbPath string
+	db         *gorm.DB
+	dbPath     string
+	shutdownFn func()
 }
 
-func NewBackupHandler(db *gorm.DB, dbPath string) *BackupHandler {
-	return &BackupHandler{db: db, dbPath: dbPath}
+func NewBackupHandler(db *gorm.DB, dbPath string, shutdownFn func()) *BackupHandler {
+	return &BackupHandler{db: db, dbPath: dbPath, shutdownFn: shutdownFn}
 }
 
 // BackupInfo 返回数据库信息（GET /api/admin/backup/info）
@@ -185,10 +186,12 @@ func (h *BackupHandler) Restore(c *gin.Context) {
 		"backupFile": currentBackup,
 	})
 
-	// P0-1: 恢复成功后自动退出，避免后续请求使用已关闭的数据库
+	// 恢复成功后通过优雅关停退出，而非直接 os.Exit
 	go func() {
 		time.Sleep(1 * time.Second)
-		os.Exit(0)
+		if h.shutdownFn != nil {
+			h.shutdownFn()
+		}
 	}()
 }
 

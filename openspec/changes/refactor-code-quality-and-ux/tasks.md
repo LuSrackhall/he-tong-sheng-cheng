@@ -13,9 +13,9 @@
 
 ## 2. 优雅关停
 
-- [ ] 2.1 在 main.go 中替换 `r.Run()` 为 `http.Server` + `os/signal` 监听 + `srv.Shutdown(ctx)` 实现优雅关停
-- [ ] 2.2 修改 BackupHandler 接收 shutdownFn 回调，替换 `os.Exit(0)` 为调用 shutdownFn 触发优雅关停
-- [ ] 2.3 在 main.go 中传入 shutdownFn 给 BackupHandler
+- [x] 2.1 在 main.go 中替换 `r.Run()` 为 `http.Server` + `os/signal` 监听 + `srv.Shutdown(ctx)` 实现优雅关停
+- [x] 2.2 修改 BackupHandler 接收 shutdownFn 回调，替换 `os.Exit(0)` 为调用 shutdownFn 触发优雅关停
+- [x] 2.3 在 main.go 中传入 shutdownFn 给 BackupHandler
 
 ## 3. Dashboard API
 
