@@ -4,6 +4,7 @@ import (
 	"asset-leasing-system/internal/domain"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +15,16 @@ type TenantHandler struct {
 
 func NewTenantHandler(repo domain.TenantRepo) *TenantHandler {
 	return &TenantHandler{repo: repo}
+}
+
+// maskIDCard 对身份证号进行脱敏，保留前4位和后4位
+func maskIDCard(idCard string) string {
+	if len(idCard) <= 8 {
+		return idCard
+	}
+	prefix := idCard[:4]
+	suffix := idCard[len(idCard)-4:]
+	return prefix + strings.Repeat("*", len(idCard)-8) + suffix
 }
 
 type tenantReq struct {
@@ -33,6 +44,11 @@ func (h *TenantHandler) List(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list tenants"})
 		return
+	}
+
+	// List 接口对身份证号脱敏
+	for i := range tenants {
+		tenants[i].IDCard = maskIDCard(tenants[i].IDCard)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": tenants, "total": total})

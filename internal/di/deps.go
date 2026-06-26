@@ -29,9 +29,9 @@ func Initialize(cfg *config.Config) *Dependencies {
 
 	switch cfg.Mode {
 	case "postgres":
-		db, err = postgres.Setup(cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName)
+		db, err = postgres.Setup(cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName, cfg.DBSSLMode, cfg.AdminPassword)
 	default:
-		db, err = sqlite.Setup(cfg.DBName + ".db")
+		db, err = sqlite.Setup(cfg.DBName+".db", cfg.AdminPassword)
 	}
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)

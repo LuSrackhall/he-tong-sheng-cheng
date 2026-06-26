@@ -4,6 +4,7 @@ import (
 	"asset-leasing-system/internal/domain"
 	"asset-leasing-system/internal/domain/calc"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -155,7 +156,8 @@ func (h *PaymentHandler) VoidPayment(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("VoidPayment error: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "操作失败，请重试"})
 		return
 	}
 

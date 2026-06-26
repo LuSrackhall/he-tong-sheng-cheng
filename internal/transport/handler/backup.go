@@ -99,7 +99,7 @@ func (h *BackupHandler) Restore(c *gin.Context) {
 		return
 	}
 
-	if c.Query("confirmed") != "true" {
+	if c.PostForm("confirmed") != "true" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "恢复操作需要确认"})
 		return
 	}

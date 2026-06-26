@@ -8,12 +8,12 @@
 
 ## 2. 数据安全
 
-- [ ] 2.1 在 `internal/transport/handler/tenant.go` 中定义 `maskIDCard()` 辅助函数，List 接口返回时对 IDCard 脱敏
-- [ ] 2.2 在 `cmd/server/main.go` 中设置 `r.MaxMultipartMemory = 10 << 20`
-- [ ] 2.3 修改 `internal/repository/postgres/setup.go`，接收 sslmode 参数，拼接到 DSN 中
-- [ ] 2.4 修改 `internal/di/deps.go`，传递 sslmode 到 postgres.Setup()
-- [ ] 2.5 修改 `internal/transport/handler/backup.go` 的 Restore 方法，从 POST body 读取 confirmed 字段
-- [ ] 2.6 修改 `internal/transport/handler/payment.go` 的 VoidPayment，将 `err.Error()` 替换为通用消息，内部错误 log 记录
+- [x] 2.1 在 `internal/transport/handler/tenant.go` 中定义 `maskIDCard()` 辅助函数，List 接口返回时对 IDCard 脱敏
+- [x] 2.2 在 `cmd/server/main.go` 中设置 `r.MaxMultipartMemory = 10 << 20`
+- [x] 2.3 修改 `internal/repository/postgres/setup.go`，接收 sslmode 参数，拼接到 DSN 中
+- [x] 2.4 修改 `internal/di/deps.go`，传递 sslmode 到 postgres.Setup()
+- [x] 2.5 修改 `internal/transport/handler/backup.go` 的 Restore 方法，从 POST body 读取 confirmed 字段
+- [x] 2.6 修改 `internal/transport/handler/payment.go` 的 VoidPayment，将 `err.Error()` 替换为通用消息，内部错误 log 记录
 
 ## 3. 基础设施安全
 
