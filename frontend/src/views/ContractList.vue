@@ -3,19 +3,12 @@ import { ref, onMounted } from 'vue'
 import { contractApi, paymentApi, type Contract, type Payment } from '../api'
 import { useEscapeKey } from '../composables/useEscapeKey'
 import { useToastStore } from '../stores/toast'
+import { useDebounce } from '../composables/useDebounce'
 
 const toast = useToastStore()
 
 // Escape 键关闭弹窗
 useEscapeKey(() => { showDetail.value = false; showEditModal.value = false })
-
-function useDebounce<F extends (...args: any[]) => void>(fn: F, delay: number): F {
-  let timer: ReturnType<typeof setTimeout>
-  return ((...args: any[]) => {
-    clearTimeout(timer)
-    timer = setTimeout(() => fn(...args), delay)
-  }) as F
-}
 
 const contracts = ref<Contract[]>([])
 const total = ref(0)
@@ -40,12 +33,21 @@ const statusLabels: Record<string, string> = {
   expired: '已到期',
 }
 
+const loading = ref(false)
+
 async function fetchContracts() {
-  const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }
-  if (statusFilter.value) params.status = statusFilter.value
-  const { data } = await contractApi.list(params)
-  contracts.value = data.data
-  total.value = data.total
+  loading.value = true
+  try {
+    const params: any = { search: search.value, offset: page.value * pageSize, limit: pageSize }
+    if (statusFilter.value) params.status = statusFilter.value
+    const { data } = await contractApi.list(params)
+    contracts.value = data.data
+    total.value = data.total
+  } catch {
+    toast.error('加载合同列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 async function openDetail(c: Contract) {
   detailContract.value = c
@@ -120,7 +122,7 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 30
 
     <div style="display: flex; gap: 12px; margin-bottom: var(--space-lg);">
       <input class="input" v-model="search" @input="onSearchInput" placeholder="搜索租户/资产名称..." style="flex: 1;" />
-      <select class="input" v-model="statusFilter" @change="fetchContracts" style="width: 140px;">
+      <select class="input" v-model="statusFilter" @change="page = 0; fetchContracts()" style="width: 140px;">
         <option value="">全部状态</option>
         <option value="active">执行中</option>
         <option value="paidup">已缴清</option>
@@ -129,7 +131,12 @@ const onSearchInput = useDebounce(() => { page.value = 0; fetchContracts() }, 30
       </select>
     </div>
 
-    <div class="table-wrapper">
+    <div v-if="loading" class="empty-state">加载中...</div>
+    <div v-else-if="contracts.length === 0" class="empty-state">
+      {{ search || statusFilter ? '未找到匹配的合同' : '暂无合同数据' }}
+    </div>
+
+    <div v-else class="table-wrapper">
       <table>
         <thead>
           <tr>

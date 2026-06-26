@@ -94,14 +94,20 @@ const activeFieldsList = computed(() => {
   return Object.keys(afMap).filter(k => afMap[k] === true)
 })
 
-// Yearly rent linked conversion
+// Yearly rent linked conversion（使用 ignoreNext 防止双向 watch 循环）
+let ignoreNextMonthly = false
+let ignoreNextYearly = false
 watch(contractMonthlyRent, (val) => {
+  if (ignoreNextMonthly) { ignoreNextMonthly = false; return }
   if (rentLinked.value && val) {
+    ignoreNextYearly = true
     contractYearlyRent.value = Math.round(val * 12 * 100) / 100
   }
 })
 watch(contractYearlyRent, (val) => {
+  if (ignoreNextYearly) { ignoreNextYearly = false; return }
   if (rentLinked.value && val) {
+    ignoreNextMonthly = true
     contractMonthlyRent.value = Math.round(val / 12 * 100) / 100
   }
 })
@@ -175,12 +181,12 @@ watch(templates, (list) => {
 })
 
 // Step guard
-onBeforeRouteLeave((_to, _from, next) => {
+onBeforeRouteLeave(() => {
   if (hasUnsavedChanges.value && step.value < 4 && !createdContract.value) {
     const confirmed = window.confirm('有未保存的合同数据，确定要离开吗？')
-    if (!confirmed) return next(false)
+    if (!confirmed) return false
   }
-  next()
+  return true
 })
 
 // ---- template-driven field helpers ----

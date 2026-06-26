@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { authApi } from '../api'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 
 const auth = useAuthStore()
+const toast = useToastStore()
 
 interface User {
   id: number
@@ -53,8 +55,13 @@ async function createUser() {
 
 async function deleteUser(id: number, username: string) {
   if (!confirm(`确定要删除用户 "${username}" 吗？`)) return
-  await authApi.deleteUser(id)
-  fetchUsers()
+  try {
+    await authApi.deleteUser(id)
+    toast.success(`用户 "${username}" 已删除`)
+    fetchUsers()
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '删除失败')
+  }
 }
 
 onMounted(fetchUsers)

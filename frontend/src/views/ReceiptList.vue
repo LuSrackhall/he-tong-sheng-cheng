@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api from '../api'
+import api, { receiptApi } from '../api'
 
 interface Receipt {
   id: number
@@ -32,7 +32,7 @@ async function fetchReceipts() {
 }
 
 function printReceipt(paymentId: number) {
-  window.open(`/api/print/receipt/${paymentId}`, '_blank')
+  receiptApi.print(paymentId)
 }
 
 onMounted(fetchReceipts)

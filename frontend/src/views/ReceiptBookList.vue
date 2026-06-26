@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import api from '../api'
 import { useEscapeKey } from '../composables/useEscapeKey'
+import { useToastStore } from '../stores/toast'
+
+const toast = useToastStore()
 
 const statusLabels: Record<string, string> = { active: '使用中', full: '已用完', archived: '已作废' }
 useEscapeKey(() => { showCreate.value = false })
@@ -26,10 +29,19 @@ const saving = ref(false)
 const submitLock = ref(false)
 const errorMessage = ref('')
 
+const loading = ref(false)
+
 async function fetchBooks() {
-  const { data } = await api.get('/receipt-books', { params: { offset: page.value * pageSize, limit: pageSize } })
-  books.value = data.data
-  total.value = data.total
+  loading.value = true
+  try {
+    const { data } = await api.get('/receipt-books', { params: { offset: page.value * pageSize, limit: pageSize } })
+    books.value = data.data
+    total.value = data.total
+  } catch {
+    toast.error('加载收据本列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 async function createBook() {
   if (submitLock.value) return
@@ -57,7 +69,10 @@ onMounted(fetchBooks)
   <div>
     <div class="page-header"><h2>收据本管理</h2><button class="btn btn-primary" @click="showCreate = true">+ 新建收据本</button></div>
 
-    <div class="table-wrapper">
+    <div v-if="loading" class="empty-state">加载中...</div>
+    <div v-else-if="books.length === 0" class="empty-state">暂无收据本，请创建新收据本</div>
+
+    <div v-else class="table-wrapper">
       <table>
         <thead>
           <tr>
