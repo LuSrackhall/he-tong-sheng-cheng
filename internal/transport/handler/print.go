@@ -52,28 +52,34 @@ func (h *PrintHandler) PrintReceipt(c *gin.Context) {
 	// 查找或创建收据记录
 	receipt, err := h.receiptRepo.GetByPaymentID(uint(paymentID))
 	if err != nil {
-		// 收据不存在，自动创建（补打场景）
-		book, bookErr := h.receiptBookRepo.GetActive()
-		if bookErr != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "没有可用的收据本，请先创建收据本"})
-			return
-		}
+		// 收据不存在，自动创建（补打场景），在事务中保证序号分配和收据创建的原子性
+		var createErr error
+		err = h.db.Transaction(func(tx *gorm.DB) error {
+			book, bookErr := h.receiptBookRepo.GetActive()
+			if bookErr != nil {
+				return fmt.Errorf("没有可用的收据本，请先创建收据本")
+			}
 
-		seq, seqErr := h.receiptBookRepo.AllocateSequence(book.ID)
-		if seqErr != nil || seq == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "收据本已用完，请创建新的收据本"})
-			return
-		}
+			seq, seqErr := h.receiptBookRepo.AllocateSequence(book.ID)
+			if seqErr != nil || seq == 0 {
+				return fmt.Errorf("收据本已用完，请创建新的收据本")
+			}
 
-		receipt = &domain.Receipt{
-			ReceiptBookID: book.ID,
-			PaymentID:     uint(paymentID),
-			SequenceNum:   seq,
-			Amount:        payment.Amount,
-			PrintedAt:     time.Now(),
-		}
-		if err := h.receiptRepo.Create(receipt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "创建收据记录失败"})
+			receipt = &domain.Receipt{
+				ReceiptBookID: book.ID,
+				PaymentID:     uint(paymentID),
+				SequenceNum:   seq,
+				Amount:        payment.Amount,
+				PrintedAt:     time.Now(),
+			}
+			if err := h.receiptRepo.Create(receipt); err != nil {
+				return fmt.Errorf("创建收据记录失败")
+			}
+			return nil
+		})
+		if err != nil {
+			createErr = err
+			c.JSON(http.StatusBadRequest, gin.H{"error": createErr.Error()})
 			return
 		}
 	}

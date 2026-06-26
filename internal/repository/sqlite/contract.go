@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"asset-leasing-system/internal/domain"
+	"time"
 )
 
 func (r *ContractRepo) Create(c *domain.Contract) error {
@@ -64,4 +65,13 @@ func (r *ContractRepo) ListUnpaid() ([]domain.Contract, error) {
 	var contracts []domain.Contract
 	err := r.db.Where("status != ?", "paidup").Preload("Asset").Preload("Tenant").Find(&contracts).Error
 	return contracts, err
+}
+
+func (r *ContractRepo) CheckOverlap(assetID, tenantID uint, start, end time.Time) (bool, error) {
+	var count int64
+	err := r.db.Model(&domain.Contract{}).
+		Where("asset_id = ? AND tenant_id = ? AND status IN ? AND start_date < ? AND end_date > ?",
+			assetID, tenantID, []string{"active", "arrears"}, end, start).
+		Count(&count).Error
+	return count > 0, err
 }

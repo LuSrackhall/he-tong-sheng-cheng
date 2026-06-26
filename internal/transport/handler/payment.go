@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -156,8 +157,13 @@ func (h *PaymentHandler) VoidPayment(c *gin.Context) {
 	})
 
 	if err != nil {
-		log.Printf("VoidPayment error: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "操作失败，请重试"})
+		// 区分业务错误和系统错误：已知业务错误保留原始消息，系统错误返回通用消息
+		if strings.Contains(err.Error(), "该收款记录已被撤销") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			log.Printf("[VoidPayment] 系统错误: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "操作失败，请稍后重试"})
+		}
 		return
 	}
 

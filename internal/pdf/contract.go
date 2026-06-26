@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"sync"
 )
 
 const templatePreviewHTML = `<!DOCTYPE html>
@@ -58,9 +59,23 @@ type TemplatePreviewData struct {
 	Fields []TemplatePreviewField
 }
 
+// 模板预览模板缓存，首次调用时解析一次
+var (
+	tplPreviewTmplOnce sync.Once
+	tplPreviewTmpl     *template.Template
+	tplPreviewTmplErr  error
+)
+
+func getTemplatePreviewTemplate() (*template.Template, error) {
+	tplPreviewTmplOnce.Do(func() {
+		tplPreviewTmpl, tplPreviewTmplErr = template.New("tplPreview").Parse(templatePreviewHTML)
+	})
+	return tplPreviewTmpl, tplPreviewTmplErr
+}
+
 // GenerateTemplatePreviewHTML 生成模板预览 HTML
 func GenerateTemplatePreviewHTML(data TemplatePreviewData) (string, error) {
-	tmpl, err := template.New("tplPreview").Parse(templatePreviewHTML)
+	tmpl, err := getTemplatePreviewTemplate()
 	if err != nil {
 		return "", fmt.Errorf("解析模板预览失败: %w", err)
 	}

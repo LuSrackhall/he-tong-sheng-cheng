@@ -383,8 +383,11 @@ func (h *ContractHandler) DownloadTemplate(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("template_%s.docx", tpl.Name)
-	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	// 剥离可能导致 HTTP 头注入的字符，使用 RFC 5987 编码
+	safeName := strings.NewReplacer("\r", "", "\n", "", `"`, "").Replace(tpl.Name)
+	asciiFilename := fmt.Sprintf("template_%s.docx", safeName)
+	encodedFilename := fmt.Sprintf("template_%s.docx", url.PathEscape(safeName))
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, asciiFilename, encodedFilename))
 	c.File(tpl.FilePath)
 }
 

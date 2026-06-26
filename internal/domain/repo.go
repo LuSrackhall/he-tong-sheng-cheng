@@ -25,6 +25,7 @@ type ContractRepo interface {
 	ListByTenantID(tenantID uint) ([]Contract, error)
 	ListActive() ([]Contract, error)
 	ListUnpaid() ([]Contract, error)
+	CheckOverlap(assetID, tenantID uint, start, end time.Time) (bool, error)
 }
 
 type PaymentRepo interface {

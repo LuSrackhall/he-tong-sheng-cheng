@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"sync"
 )
 
 type ReceiptData struct {
@@ -88,9 +89,23 @@ type copyData struct {
 	CopyLabel string
 }
 
+// 收据模板缓存，首次调用时解析一次
+var (
+	receiptTmplOnce sync.Once
+	receiptTmpl     *template.Template
+	receiptTmplErr  error
+)
+
+func getReceiptTemplate() (*template.Template, error) {
+	receiptTmplOnce.Do(func() {
+		receiptTmpl, receiptTmplErr = template.New("receipt").Parse(receiptHTML)
+	})
+	return receiptTmpl, receiptTmplErr
+}
+
 // GenerateReceiptHTML 生成三联收据 HTML
 func GenerateReceiptHTML(data ReceiptData) (string, error) {
-	tmpl, err := template.New("receipt").Parse(receiptHTML)
+	tmpl, err := getReceiptTemplate()
 	if err != nil {
 		return "", fmt.Errorf("解析模板失败: %w", err)
 	}

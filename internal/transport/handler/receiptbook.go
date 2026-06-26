@@ -50,6 +50,10 @@ func (h *ReceiptBookHandler) Create(c *gin.Context) {
 	if req.StartNum <= 0 {
 		req.StartNum = 1
 	}
+	if req.TotalPages <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "TotalPages must be greater than 0"})
+		return
+	}
 
 	book := &domain.ReceiptBook{
 		Prefix:     req.Prefix,

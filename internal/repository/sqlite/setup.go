@@ -15,10 +15,19 @@ func Setup(dbPath string, adminPassword string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// 安全和性能 PRAGMA 配置
-	db.Exec("PRAGMA journal_mode=WAL")
-	db.Exec("PRAGMA foreign_keys=ON")
-	db.Exec("PRAGMA busy_timeout=5000")
+	// 启用 WAL 模式和优化 PRAGMA，提升并发性能
+	if err := db.Exec("PRAGMA journal_mode=WAL").Error; err != nil {
+		return nil, err
+	}
+	if err := db.Exec("PRAGMA foreign_keys=ON").Error; err != nil {
+		return nil, err
+	}
+	if err := db.Exec("PRAGMA busy_timeout=5000").Error; err != nil {
+		return nil, err
+	}
+	if err := db.Exec("PRAGMA synchronous=NORMAL").Error; err != nil {
+		return nil, err
+	}
 
 	if err := db.AutoMigrate(
 		&domain.Asset{},

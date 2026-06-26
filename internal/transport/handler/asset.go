@@ -26,8 +26,7 @@ type assetReq struct {
 func (h *AssetHandler) List(c *gin.Context) {
 	search := c.Query("search")
 	assetType := c.Query("type")
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, limit := parsePagination(c, 20, 100)
 
 	assets, total, err := h.repo.List(search, assetType, offset, limit)
 	if err != nil {

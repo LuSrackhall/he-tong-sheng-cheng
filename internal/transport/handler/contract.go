@@ -39,8 +39,7 @@ type contractReq struct {
 func (h *ContractHandler) List(c *gin.Context) {
 	search := c.Query("search")
 	status := c.Query("status")
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, limit := parsePagination(c, 20, 100)
 
 	contracts, total, err := h.repo.List(search, status, offset, limit)
 	if err != nil {
@@ -73,16 +72,15 @@ func (h *ContractHandler) Create(c *gin.Context) {
 		return
 	}
 
-	active, err := h.repo.ListActive()
+	// 使用 SQL 条件查询检测合同重叠，避免加载全部活跃合同到内存
+	overlap, err := h.repo.CheckOverlap(req.AssetID, req.TenantID, startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing contracts"})
 		return
 	}
-	for _, ct := range active {
-		if ct.AssetID == req.AssetID && ct.TenantID == req.TenantID && startDate.Before(ct.EndDate) && endDate.After(ct.StartDate) {
-			c.JSON(http.StatusConflict, gin.H{"error": "该资产与租户在此时间段已有合同"})
-			return
-		}
+	if overlap {
+		c.JSON(http.StatusConflict, gin.H{"error": "该资产与租户在此时间段已有合同"})
+		return
 	}
 
 	if req.TotalReceivable <= 0 {
@@ -186,14 +184,20 @@ func (h *ContractHandler) Update(c *gin.Context) {
 		contract.Deposit = req.Deposit
 	}
 	if req.StartDate != "" {
-		if t, err := time.ParseInLocation("2006-01-02", req.StartDate, time.Local); err == nil {
-			contract.StartDate = t
+		t, err := time.ParseInLocation("2006-01-02", req.StartDate, time.Local)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "startDate 日期格式不正确，应为 YYYY-MM-DD"})
+			return
 		}
+		contract.StartDate = t
 	}
 	if req.EndDate != "" {
-		if t, err := time.ParseInLocation("2006-01-02", req.EndDate, time.Local); err == nil {
-			contract.EndDate = t
+		t, err := time.ParseInLocation("2006-01-02", req.EndDate, time.Local)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "endDate 日期格式不正确，应为 YYYY-MM-DD"})
+			return
 		}
+		contract.EndDate = t
 	}
 	if req.Notes != "" {
 		contract.Notes = req.Notes

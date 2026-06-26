@@ -37,8 +37,7 @@ type tenantReq struct {
 
 func (h *TenantHandler) List(c *gin.Context) {
 	search := c.Query("search")
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, limit := parsePagination(c, 20, 100)
 
 	tenants, total, err := h.repo.List(search, offset, limit)
 	if err != nil {

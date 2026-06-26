@@ -69,6 +69,15 @@ func (r *ContractRepo) ListUnpaid() ([]domain.Contract, error) {
 	return contracts, err
 }
 
+func (r *ContractRepo) CheckOverlap(assetID, tenantID uint, start, end time.Time) (bool, error) {
+	var count int64
+	err := r.db.Model(&domain.Contract{}).
+		Where("asset_id = ? AND tenant_id = ? AND status IN ? AND start_date < ? AND end_date > ?",
+			assetID, tenantID, []string{"active", "arrears"}, end, start).
+		Count(&count).Error
+	return count > 0, err
+}
+
 func (r *PaymentRepo) Create(p *domain.Payment) error {
 	return r.db.Create(p).Error
 }

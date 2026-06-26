@@ -105,6 +105,13 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 		req.Role = "operator"
 	}
 
+	// 角色白名单校验
+	validRoles := map[string]bool{"admin": true, "operator": true}
+	if !validRoles[req.Role] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Role must be 'admin' or 'operator'"})
+		return
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})

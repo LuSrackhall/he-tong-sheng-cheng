@@ -4,6 +4,7 @@ import (
 	"asset-leasing-system/internal/domain"
 	"fmt"
 	"log"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
@@ -16,6 +17,16 @@ func Setup(host, port, user, pass, dbname, sslmode, adminPassword string) (*gorm
 	if err != nil {
 		return nil, err
 	}
+
+	// 配置连接池参数
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
+
 	if err := db.AutoMigrate(
 		&domain.Asset{},
 		&domain.Tenant{},
