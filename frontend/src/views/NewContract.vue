@@ -86,12 +86,31 @@ const manualTotal = ref(false)
 const contractDeposit = ref<number | null>(null)
 const contractNotes = ref('')
 const rentLinked = ref(true)  // monthlyRent/yearlyRent linked conversion
+const customFieldValues = ref<Record<string, string>>({})  // 自定义字段值
 
-// Template-driven active fields list
+// Template-driven fieldMap parsing（fieldMap JSON: {"fieldName": "中文标签", ...}）
+const parsedFieldMap = computed<Record<string, string>>(() => {
+  if (!selectedTemplate.value?.fieldMap) return {}
+  try {
+    const parsed = JSON.parse(selectedTemplate.value.fieldMap)
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, string>
+    }
+    return {}
+  } catch {
+    return {}
+  }
+})
+
+// Template-driven active fields list（从 fieldMap 获取所有字段，fallback 到 activeFields）
 const activeFieldsList = computed(() => {
   if (!selectedTemplate.value) return []
+  // 优先从 fieldMap 获取字段列表
+  const fm = parsedFieldMap.value
+  if (Object.keys(fm).length > 0) return Object.keys(fm)
+  // fallback: 从 activeFields 获取（兼容旧数据）
   const afMap = parseActiveFieldsArray(selectedTemplate.value.activeFields || '')
-  return Object.keys(afMap).filter(k => afMap[k] === true)
+  return Object.keys(afMap)
 })
 
 // Yearly rent linked conversion（使用 ignoreNext 防止双向 watch 循环）
@@ -200,7 +219,7 @@ const fieldLabels: Record<string, string> = {
 }
 
 function getFieldLabel(key: string): string {
-  return fieldLabels[key] || key
+  return parsedFieldMap.value[key] || fieldLabels[key] || key
 }
 
 function isRequiredField(key: string): boolean {
@@ -407,6 +426,10 @@ async function createContract() {
       deposit: contractDeposit.value ?? 0,
       notes: contractNotes.value || undefined,
     }
+    // 合并自定义字段值（后端当前不支持，预留接口）
+    if (Object.keys(customFieldValues.value).length > 0) {
+      payload.customFields = { ...customFieldValues.value }
+    }
     if (selectedTemplate.value) {
       payload.templateId = selectedTemplate.value.id
     }
@@ -476,6 +499,7 @@ function resetAll() {
   manualTotal.value = false
   contractDeposit.value = null
   contractNotes.value = ''
+  customFieldValues.value = {}
   errorMessage.value = ''
   createdContract.value = null
   // Re-fetch templates in case new ones were added
@@ -811,7 +835,7 @@ onMounted(fetchTemplates)
             <input class="input" v-model="contractNotes" placeholder="线下约定、特殊条款等" />
           </template>
           <template v-else>
-            <input class="input" :placeholder="'请输入 ' + getFieldLabel(key)" />
+            <input class="input" v-model="customFieldValues[key]" :placeholder="'请输入 ' + getFieldLabel(key)" />
           </template>
 
           <p v-if="key === 'totalReceivable'" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">
