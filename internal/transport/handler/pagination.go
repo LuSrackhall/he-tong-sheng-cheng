@@ -12,6 +12,7 @@ import (
 func getUintFromContext(c *gin.Context, key string) (uint, error) {
 	val, ok := c.Get(key)
 	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未认证"})
 		return 0, fmt.Errorf("missing context key: %s", key)
 	}
 	id, ok := val.(uint)

@@ -79,7 +79,10 @@ func main() {
 			MaxAge:           12 * time.Hour,
 		}
 		if len(origins) == 1 && origins[0] == "*" {
-			corsConfig.AllowAllOrigins = true
+			// AllowAllOrigins + AllowCredentials 违反 CORS 规范，改用回显 Origin
+			corsConfig.AllowOriginFunc = func(origin string) bool {
+				return true
+			}
 		} else {
 			corsConfig.AllowOriginFunc = func(origin string) bool {
 				for _, o := range origins {

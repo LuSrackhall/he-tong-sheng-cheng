@@ -119,7 +119,7 @@ export const authApi = {
 }
 
 export const backupApi = {
-  info: () => api.get<{ type: string; path: string; size?: number; lastModified?: string }>('/admin/backup/info'),
+  info: () => api.get<{ type: string; size?: number; lastModified?: string }>('/admin/backup/info'),
   backup: async () => {
     const response = await api.post('/admin/backup', {}, { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([response.data as any]))
