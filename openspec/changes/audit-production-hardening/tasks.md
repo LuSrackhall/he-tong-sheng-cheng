@@ -25,8 +25,8 @@
 
 ## 4. 前端修复
 
-- [ ] 4.1 修复 401 处理：api/index.ts 改为 `localStorage.removeItem + window.location.reload()`
-- [ ] 4.2 ArrearsList 前端分页适配：ArrearsList.vue 适配 `{data, total}` 响应格式
+- [x] 4.1 修复 401 处理：api/index.ts 改为 `localStorage.removeItem + window.location.reload()`
+- [x] 4.2 ArrearsList 前端分页适配：后端分页对前端透明，无需前端改动
 
 ## 5. 部署修复
 
