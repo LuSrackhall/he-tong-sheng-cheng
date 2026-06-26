@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { assetApi, tenantApi, contractApi, templateApi, type Asset, type Tenant, type Contract, type Template } from '../api'
+import { toChineseAmount } from '../utils/chineseAmount'
 import { useToastStore } from '../stores/toast'
 
 const toast = useToastStore()
@@ -9,7 +10,7 @@ const toast = useToastStore()
 const router = useRouter()
 
 // Field source classification for template-driven rendering
-const SYSTEM_AUTO_FIELDS = new Set(['contractId', 'totalReceivable', 'totalReceived', 'deposit', 'status', 'notes'])
+const SYSTEM_AUTO_FIELDS = new Set(['contractId', 'totalReceivable', 'totalReceived', 'deposit', 'status', 'notes', 'monthlyRentCN', 'yearlyRentCN', 'totalReceivableCN', 'totalReceivedCN', 'depositCN'])
 const ASSET_TENANT_FIELDS = new Set(['assetName', 'assetType', 'assetDescription', 'tenantName', 'tenantIDCard', 'tenantPhone'])
 const USER_INPUT_FIELDS = new Set(['startDate', 'endDate', 'monthlyRent', 'yearlyRent'])
 
@@ -216,6 +217,7 @@ const fieldLabels: Record<string, string> = {
   assetName: '资产名称', assetType: '资产类型', assetDescription: '资产描述',
   tenantName: '租户姓名', tenantIDCard: '身份证号', tenantPhone: '联系电话',
   today: '今日日期',
+  monthlyRentCN: '月租金（大写）', yearlyRentCN: '年租金（大写）', totalReceivableCN: '应收总额（大写）', totalReceivedCN: '已收总额（大写）', depositCN: '押金（大写）',
 }
 
 function getFieldLabel(key: string): string {
@@ -234,6 +236,11 @@ function getSystemAutoValue(key: string): string {
     case 'deposit': return contractDeposit.value ? contractDeposit.value.toFixed(2) : ''
     case 'status': return 'active'
     case 'notes': return contractNotes.value
+    case 'monthlyRentCN': return toChineseAmount(contractMonthlyRent.value)
+    case 'yearlyRentCN': return toChineseAmount(contractYearlyRent.value)
+    case 'totalReceivableCN': return toChineseAmount(contractTotalReceivable.value)
+    case 'totalReceivedCN': return toChineseAmount(0)
+    case 'depositCN': return toChineseAmount(contractDeposit.value)
     default: return ''
   }
 }
@@ -800,6 +807,7 @@ onMounted(fetchTemplates)
               </button>
             </div>
           </template>
+          <p v-if="contractMonthlyRent" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">{{ toChineseAmount(contractMonthlyRent) }}</p>
 
           <!-- User-input: yearlyRent -->
           <template v-else-if="key === 'yearlyRent'">
@@ -816,6 +824,7 @@ onMounted(fetchTemplates)
               </button>
             </div>
           </template>
+          <p v-if="contractYearlyRent" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">{{ toChineseAmount(contractYearlyRent) }}</p>
 
           <!-- User-input: other (totalReceivable, deposit, notes, custom fields) -->
           <template v-else-if="key === 'totalReceivable'">
@@ -828,9 +837,11 @@ onMounted(fetchTemplates)
               </span>
             </div>
           </template>
+          <p v-if="contractTotalReceivable > 0" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">{{ toChineseAmount(contractTotalReceivable) }}</p>
           <template v-else-if="key === 'deposit'">
             <input class="input" type="number" v-model="contractDeposit" placeholder="如：5000" />
           </template>
+          <p v-if="contractDeposit" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">{{ toChineseAmount(contractDeposit) }}</p>
           <template v-else-if="key === 'notes'">
             <input class="input" v-model="contractNotes" placeholder="线下约定、特殊条款等" />
           </template>
@@ -862,6 +873,7 @@ onMounted(fetchTemplates)
         <div class="form-group">
           <label class="label">月租金 <span style="color: var(--color-danger);">*</span></label>
           <input class="input" type="number" v-model="contractMonthlyRent" placeholder="如：5000" @input="manualTotal = false" />
+          <p v-if="contractMonthlyRent" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">{{ toChineseAmount(contractMonthlyRent) }}</p>
         </div>
         <div class="form-group">
           <label class="label">应收总额</label>
@@ -871,10 +883,12 @@ onMounted(fetchTemplates)
               @focus="manualTotal = true" />
             <span style="font-size: 0.75rem; color: var(--color-text-tertiary); white-space: nowrap;">{{ manualTotal ? '手动' : '自动' }}</span>
           </div>
+          <p v-if="contractTotalReceivable > 0" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">{{ toChineseAmount(contractTotalReceivable) }}</p>
         </div>
         <div class="form-group">
           <label class="label">押金（可选）</label>
           <input class="input" type="number" v-model="contractDeposit" placeholder="如：5000" />
+          <p v-if="contractDeposit" style="font-size: 0.75rem; color: var(--color-text-tertiary); margin-top: 4px;">{{ toChineseAmount(contractDeposit) }}</p>
         </div>
         <div class="form-group">
           <label class="label">备注（可选）</label>

@@ -492,6 +492,11 @@ func buildReplaceValues(contract *domain.Contract, tpl *domain.Template) map[str
 	values["totalReceivable"] = fmt.Sprintf("%.2f", contract.TotalReceivable)
 	values["totalReceived"] = fmt.Sprintf("%.2f", contract.TotalReceived)
 	values["deposit"] = fmt.Sprintf("%.2f", contract.Deposit)
+	values["monthlyRentCN"] = docx.ToChineseAmount(contract.MonthlyRent)
+	values["yearlyRentCN"] = docx.ToChineseAmount(contract.MonthlyRent * 12)
+	values["totalReceivableCN"] = docx.ToChineseAmount(contract.TotalReceivable)
+	values["totalReceivedCN"] = docx.ToChineseAmount(contract.TotalReceived)
+	values["depositCN"] = docx.ToChineseAmount(contract.Deposit)
 	values["notes"] = contract.Notes
 	values["status"] = contract.Status
 
