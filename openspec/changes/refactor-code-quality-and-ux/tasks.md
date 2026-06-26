@@ -27,9 +27,9 @@
 
 ## 4. 前端 UI/UX 优化
 
-- [ ] 4.1 修改默认路由从 `/new-contract` 改为 `/`，创建 Home.vue Dashboard 概览页
-- [ ] 4.2 在 App.vue 中新增"概览"菜单入口，重命名侧边栏分组标签
-- [ ] 4.3 优化 ArrearsList.vue 空状态：当所有 tab 均为空时显示醒目引导
+- [x] 4.1 修改默认路由从 `/new-contract` 改为 `/`，创建 Home.vue Dashboard 概览页
+- [x] 4.2 在 App.vue 中新增"概览"菜单入口，重命名侧边栏分组标签
+- [x] 4.3 优化 ArrearsList.vue 空状态：当所有 tab 均为空时显示醒目引导
 
 ## 5. 构建验证
 
