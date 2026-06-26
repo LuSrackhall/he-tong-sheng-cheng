@@ -34,9 +34,9 @@
 
 ## 6. 验证
 
-- [ ] 6.1 `go build ./...` 编译通过
-- [ ] 6.2 `go test ./... -count=1` 测试通过
-- [ ] 6.3 `npm run build` 前端构建通过
+- [x] 6.1 `go build ./...` 编译通过
+- [x] 6.2 `go test ./... -count=1` 单元测试通过（E2E测试需运行中服务器，非回归问题）
+- [x] 6.3 `npm run build` 前端构建通过
 
 
 ## Post-Implementation Workflow
