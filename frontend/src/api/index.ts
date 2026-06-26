@@ -136,6 +136,7 @@ export const backupApi = {
   restore: (file: File) => {
     const fd = new FormData()
     fd.append('backup', file)
-    return api.post('/admin/restore?confirmed=true', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    fd.append('confirmed', 'true')
+    return api.post('/admin/restore', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
 }

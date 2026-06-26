@@ -15,9 +15,11 @@ async function submit() {
     error.value = '请输入用户名和密码'
     return
   }
-  const ok = await auth.login(username.value, password.value)
-  if (ok) {
+  const result = await auth.login(username.value, password.value)
+  if (result.ok) {
     router.push('/')
+  } else if (result.rateLimited) {
+    error.value = '登录尝试次数过多，请稍后再试'
   } else {
     error.value = '用户名或密码错误'
   }

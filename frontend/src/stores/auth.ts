@@ -19,7 +19,13 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = data.token
       user.value = data.user
       localStorage.setItem('token', data.token)
-      return true
+      return { ok: true }
+    } catch (err: any) {
+      const status = err.response?.status
+      if (status === 429) {
+        return { ok: false, rateLimited: true }
+      }
+      return { ok: false, rateLimited: false }
     } finally {
       loading.value = false
     }

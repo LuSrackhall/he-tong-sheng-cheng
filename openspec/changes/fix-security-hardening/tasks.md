@@ -23,8 +23,8 @@
 
 ## 4. 前端适配
 
-- [ ] 4.1 修改 `frontend/src/api/index.ts`，备份恢复接口 confirmed 从 URL 移到 FormData
-- [ ] 4.2 修改 `frontend/src/views/Login.vue`，处理 429 状态码显示限流提示
+- [x] 4.1 修改 `frontend/src/api/index.ts`，备份恢复接口 confirmed 从 URL 移到 FormData
+- [x] 4.2 修改 `frontend/src/views/Login.vue`，处理 429 状态码显示限流提示
 
 ---
 
