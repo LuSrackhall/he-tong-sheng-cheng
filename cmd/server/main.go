@@ -100,7 +100,11 @@ func main() {
 
 	// SPA middleware runs before routing to avoid gin's RedirectTrailingSlash
 	r.Use(middleware.SPAFallbackEmbed(distSub))
-	r.Use(gin.Logger(), gin.Recovery())
+	r.Use(gin.Logger())
+	r.Use(gin.CustomRecoveryWithWriter(nil, func(c *gin.Context, err any) {
+		log.Printf("[PANIC] %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "服务器内部错误"})
+	}))
 
 	api := r.Group("/api")
 	{

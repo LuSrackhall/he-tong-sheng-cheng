@@ -158,14 +158,8 @@ func (h *AuthHandler) DeleteUser(c *gin.Context) {
 	}
 
 	// 禁止删除自己
-	currentUserID, ok := c.Get("userID")
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未认证"})
-		return
-	}
-	uid, ok := currentUserID.(uint)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "内部错误"})
+	uid, err := getUintFromContext(c, "userID")
+	if err != nil {
 		return
 	}
 	if uid == uint(id) {
@@ -210,7 +204,10 @@ type changePasswordReq struct {
 }
 
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	uid, err := getUintFromContext(c, "userID")
+	if err != nil {
+		return
+	}
 
 	var req changePasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -218,7 +215,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.GetByID(userID.(uint))
+	user, err := h.userRepo.GetByID(uid)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return

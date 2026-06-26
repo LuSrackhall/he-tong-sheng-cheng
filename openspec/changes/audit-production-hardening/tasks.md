@@ -10,11 +10,11 @@
 
 ## 2. 后端健壮性修复
 
-- [ ] 2.1 提取类型断言 helper 函数：在 handler 包中新增 `getUintFromContext(c *gin.Context, key string) (uint, error)`
-- [ ] 2.2 修复 auth.go ChangePassword 的类型断言：使用 helper 函数替换 `userID.(uint)`
-- [ ] 2.3 修复 auth.go DeleteUser 的类型断言：使用 helper 函数
-- [ ] 2.4 修复 VoidPayment 状态码：系统错误返回 500 而非 400
-- [ ] 2.5 自定义 Recovery 中间件：main.go 替换 `gin.Recovery()` 为 `gin.CustomRecovery`
+- [x] 2.1 提取类型断言 helper 函数：在 handler 包中新增 `getUintFromContext(c *gin.Context, key string) (uint, error)`
+- [x] 2.2 修复 auth.go ChangePassword 的类型断言：使用 helper 函数替换 `userID.(uint)`
+- [x] 2.3 修复 auth.go DeleteUser 的类型断言：使用 helper 函数
+- [x] 2.4 修复 VoidPayment 状态码：系统错误返回 500 而非 400
+- [x] 2.5 自定义 Recovery 中间件：main.go 替换 `gin.Recovery()` 为 `gin.CustomRecovery`
 
 ## 3. 后端性能修复
 
