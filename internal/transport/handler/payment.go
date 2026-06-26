@@ -162,7 +162,7 @@ func (h *PaymentHandler) VoidPayment(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		} else {
 			log.Printf("[VoidPayment] 系统错误: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "操作失败，请稍后重试"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "操作失败，请稍后重试"})
 		}
 		return
 	}

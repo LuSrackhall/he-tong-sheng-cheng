@@ -6,6 +6,7 @@ import (
 	"asset-leasing-system/internal/domain/calc"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -203,6 +204,12 @@ func (h *ContractHandler) Update(c *gin.Context) {
 		contract.Notes = req.Notes
 	}
 
+	// 日期范围校验：更新后结束日期必须晚于开始日期
+	if !contract.EndDate.After(contract.StartDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "结束日期必须晚于开始日期"})
+		return
+	}
+
 	if err := h.repo.Update(contract); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新合同失败"})
 		return
@@ -352,7 +359,10 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 				tpl.Validated = true
 			}
 		}
-		h.templateRepo.Update(tpl)
+		if err := h.templateRepo.Update(tpl); err != nil {
+			// 主更新已成功，此处仅记录日志
+			log.Printf("[UpdateTemplateMapping] 重新校验模板状态更新失败 template_id=%d: %v", id, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, tpl)
