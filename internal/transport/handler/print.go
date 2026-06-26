@@ -53,33 +53,43 @@ func (h *PrintHandler) PrintReceipt(c *gin.Context) {
 	receipt, err := h.receiptRepo.GetByPaymentID(uint(paymentID))
 	if err != nil {
 		// 收据不存在，自动创建（补打场景），在事务中保证序号分配和收据创建的原子性
-		var createErr error
 		err = h.db.Transaction(func(tx *gorm.DB) error {
-			book, bookErr := h.receiptBookRepo.GetActive()
-			if bookErr != nil {
+			// 查找活跃收据本
+			var book domain.ReceiptBook
+			if err := tx.Where("status = ?", "active").First(&book).Error; err != nil {
 				return fmt.Errorf("没有可用的收据本，请先创建收据本")
 			}
 
-			seq, seqErr := h.receiptBookRepo.AllocateSequence(book.ID)
-			if seqErr != nil || seq == 0 {
+			// 在事务内原子递增序号，避免并发冲突
+			result := tx.Model(&domain.ReceiptBook{}).
+				Where("id = ? AND current_num < start_num + total_pages AND status = ?", book.ID, "active").
+				Update("current_num", gorm.Expr("current_num + 1"))
+			if result.Error != nil {
+				return fmt.Errorf("分配收据序号失败")
+			}
+			if result.RowsAffected == 0 {
 				return fmt.Errorf("收据本已用完，请创建新的收据本")
+			}
+
+			// 重新读取递增后的序号
+			if err := tx.First(&book, book.ID).Error; err != nil {
+				return fmt.Errorf("获取收据本信息失败")
 			}
 
 			receipt = &domain.Receipt{
 				ReceiptBookID: book.ID,
 				PaymentID:     uint(paymentID),
-				SequenceNum:   seq,
+				SequenceNum:   book.CurrentNum,
 				Amount:        payment.Amount,
 				PrintedAt:     time.Now(),
 			}
-			if err := h.receiptRepo.Create(receipt); err != nil {
+			if err := tx.Create(receipt).Error; err != nil {
 				return fmt.Errorf("创建收据记录失败")
 			}
 			return nil
 		})
 		if err != nil {
-			createErr = err
-			c.JSON(http.StatusBadRequest, gin.H{"error": createErr.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	}

@@ -46,6 +46,13 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 		return
 	}
 
+	// 文件大小限制（10MB）
+	const maxTemplateSize int64 = 10 << 20
+	if file.Size > maxTemplateSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "文件过大（最大 10MB）"})
+		return
+	}
+
 	// Read file into memory for validation
 	src, err := file.Open()
 	if err != nil {

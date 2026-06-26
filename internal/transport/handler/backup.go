@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -65,8 +66,9 @@ func (h *BackupHandler) Backup(c *gin.Context) {
 
 	backupPath := fmt.Sprintf("%s/backup_%s.db", backupDir, time.Now().Format("20060102_150405"))
 
-	// VACUUM INTO 生成无碎片干净副本
-	result := h.db.Exec("VACUUM INTO ?", backupPath)
+	// VACUUM INTO 不支持参数化查询，需内联字符串（路径由 time.Now 生成，无用户输入风险）
+	safeBackupPath := strings.ReplaceAll(backupPath, "'", "''")
+	result := h.db.Exec(fmt.Sprintf("VACUUM INTO '%s'", safeBackupPath))
 	if result.Error != nil {
 		// 回退：直接复制
 		if err := copyFile(h.dbPath, backupPath); err != nil {

@@ -2,12 +2,25 @@ package common
 
 import (
 	"asset-leasing-system/internal/domain"
+	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 // 所有 repo struct 定义
+
+// ErrReceiptBookExhausted 收据本已用完的错误
+var ErrReceiptBookExhausted = fmt.Errorf("收据本已用完")
+
+// escapeLike 转义 SQL LIKE 查询中的通配符，防止用户输入 % 或 _ 导致意外匹配
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
+}
 
 type AssetRepo struct{ DB *gorm.DB }
 type TenantRepo struct{ DB *gorm.DB }
@@ -67,7 +80,8 @@ func (r *AssetRepo) List(search string, assetType string, offset, limit int) ([]
 	var total int64
 	q := r.DB.Model(&domain.Asset{})
 	if search != "" {
-		q = q.Where("name LIKE ? OR description LIKE ?", "%"+search+"%", "%"+search+"%")
+		p := "%" + escapeLike(search) + "%"
+		q = q.Where("name LIKE ? OR description LIKE ?", p, p)
 	}
 	if assetType != "" {
 		q = q.Where("asset_type = ?", assetType)
@@ -105,7 +119,8 @@ func (r *TenantRepo) List(search string, offset, limit int) ([]domain.Tenant, in
 	var total int64
 	q := r.DB.Model(&domain.Tenant{})
 	if search != "" {
-		q = q.Where("name LIKE ? OR phone LIKE ? OR id_card LIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+		p := "%" + escapeLike(search) + "%"
+		q = q.Where("name LIKE ? OR phone LIKE ? OR id_card LIKE ?", p, p, p)
 	}
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -140,9 +155,10 @@ func (r *ContractRepo) List(search string, status string, offset, limit int) ([]
 	var total int64
 	q := r.DB.Model(&domain.Contract{}).Preload("Asset").Preload("Tenant")
 	if search != "" {
+		p := "%" + escapeLike(search) + "%"
 		q = q.Joins("JOIN tenants ON tenants.id = contracts.tenant_id").
 			Joins("JOIN assets ON assets.id = contracts.asset_id").
-			Where("tenants.name LIKE ? OR assets.name LIKE ?", "%"+search+"%", "%"+search+"%")
+			Where("tenants.name LIKE ? OR assets.name LIKE ?", p, p)
 	}
 	if status != "" {
 		q = q.Where("contracts.status = ?", status)
@@ -297,7 +313,7 @@ func (r *ReceiptBookRepo) AllocateSequence(bookID uint) (int, error) {
 		return 0, result.Error
 	}
 	if result.RowsAffected == 0 {
-		return 0, nil // 收据本已用完
+		return 0, ErrReceiptBookExhausted
 	}
 	var rb domain.ReceiptBook
 	if err := r.DB.First(&rb, bookID).Error; err != nil {
