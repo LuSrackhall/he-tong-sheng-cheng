@@ -184,6 +184,17 @@ func (r *ContractRepo) ListUnpaid() ([]domain.Contract, error) {
 	return contracts, err
 }
 
+func (r *ContractRepo) ListUnpaidPaging(offset, limit int) ([]domain.Contract, int64, error) {
+	var contracts []domain.Contract
+	var total int64
+	q := r.DB.Model(&domain.Contract{}).Where("status != ?", "paidup")
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := q.Preload("Asset").Preload("Tenant").Offset(offset).Limit(limit).Order("created_at desc").Find(&contracts).Error
+	return contracts, total, err
+}
+
 func (r *ContractRepo) CheckOverlap(assetID, tenantID uint, start, end time.Time) (bool, error) {
 	var count int64
 	err := r.DB.Model(&domain.Contract{}).

@@ -18,10 +18,10 @@
 
 ## 3. 后端性能修复
 
-- [ ] 3.1 SQLite 连接池配置：sqlite/setup.go 添加 `SetMaxOpenConns(1)` 等参数
-- [ ] 3.2 ArrearsList 分页 - Repository 层：repos.go 的 ListUnpaidPaging 方法
-- [ ] 3.3 ArrearsList 分页 - Handler 层：arrears.go 使用 parsePagination
-- [ ] 3.4 添加数据库索引 tag：contract.go status、payment.go contractId/voided、receipt.go paymentId
+- [x] 3.1 SQLite 连接池配置：sqlite/setup.go 添加 `SetMaxOpenConns(1)` 等参数
+- [x] 3.2 ArrearsList 分页 - Repository 层：repos.go 的 ListUnpaidPaging 方法
+- [x] 3.3 ArrearsList 分页 - Handler 层：arrears.go 使用 parsePagination
+- [x] 3.4 添加数据库索引 tag：contract.go status、payment.go contractId/voided、receipt.go paymentId
 
 ## 4. 前端修复
 

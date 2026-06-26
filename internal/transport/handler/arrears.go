@@ -31,7 +31,9 @@ type arrearsContract struct {
 }
 
 func (h *ArrearsHandler) List(c *gin.Context) {
-	contracts, err := h.contractRepo.ListUnpaid()
+	offset, limit := parsePagination(c, 50, 200)
+
+	contracts, _, err := h.contractRepo.ListUnpaidPaging(offset, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取催缴清单失败"})
 		return
