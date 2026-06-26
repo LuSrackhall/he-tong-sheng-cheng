@@ -19,11 +19,11 @@
 
 ## 3. Dashboard API
 
-- [ ] 3.1 在 domain 层定义 DashboardStats 结构体
-- [ ] 3.2 在 ContractRepo 和 PaymentRepo 接口中添加 Dashboard 所需的查询方法
-- [ ] 3.3 在 common/repos.go 中实现 Dashboard 查询方法（CountActive、MonthlyRevenue、CountOverdue、CountNewThisMonth）
-- [ ] 3.4 创建 `internal/transport/handler/dashboard.go`，实现 DashboardStatsHandler
-- [ ] 3.5 在 main.go 中注册 `GET /api/dashboard/stats` 路由
+- [x] 3.1 在 domain 层定义 DashboardStats 结构体
+- [x] 3.2 在 ContractRepo 和 PaymentRepo 接口中添加 Dashboard 所需的查询方法
+- [x] 3.3 在 common/repos.go 中实现 Dashboard 查询方法（CountActive、MonthlyRevenue、CountOverdue、CountNewThisMonth）
+- [x] 3.4 创建 `internal/transport/handler/dashboard.go`，实现 DashboardStatsHandler
+- [x] 3.5 在 main.go 中注册 `GET /api/dashboard/stats` 路由
 
 ## 4. 前端 UI/UX 优化
 

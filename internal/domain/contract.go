@@ -20,3 +20,11 @@ type Contract struct {
 	CreatedAt       time.Time `json:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
+
+// DashboardStats 仪表盘统计数据
+type DashboardStats struct {
+	ActiveContracts       int64   `json:"activeContracts"`
+	MonthlyRevenue        float64 `json:"monthlyRevenue"`
+	OverdueContracts      int64   `json:"overdueContracts"`
+	NewContractsThisMonth int64   `json:"newContractsThisMonth"`
+}

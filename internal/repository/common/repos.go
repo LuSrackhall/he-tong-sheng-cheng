@@ -18,6 +18,7 @@ type ReceiptBookRepo struct{ DB *gorm.DB }
 type TemplateRepo struct{ DB *gorm.DB }
 type UserRepo struct{ DB *gorm.DB }
 type ArrearsRecordRepo struct{ DB *gorm.DB }
+type DashboardRepo struct{ DB *gorm.DB }
 
 // 所有 repo 构造函数
 
@@ -32,6 +33,7 @@ func NewUserRepo(db *gorm.DB) *UserRepo               { return &UserRepo{DB: db}
 func NewArrearsRecordRepo(db *gorm.DB) *ArrearsRecordRepo {
 	return &ArrearsRecordRepo{DB: db}
 }
+func NewDashboardRepo(db *gorm.DB) *DashboardRepo { return &DashboardRepo{DB: db} }
 
 // 接口断言
 var _ domain.AssetRepo = (*AssetRepo)(nil)
@@ -43,6 +45,7 @@ var _ domain.ReceiptBookRepo = (*ReceiptBookRepo)(nil)
 var _ domain.TemplateRepo = (*TemplateRepo)(nil)
 var _ domain.UserRepo = (*UserRepo)(nil)
 var _ domain.ArrearsRecordRepo = (*ArrearsRecordRepo)(nil)
+var _ domain.DashboardRepo = (*DashboardRepo)(nil)
 
 // ── AssetRepo ──
 
@@ -394,4 +397,43 @@ func (r *ArrearsRecordRepo) ListByDateAndLevel(date time.Time, level int) ([]dom
 	}
 	err := q.Find(&records).Error
 	return records, err
+}
+
+// ── DashboardRepo ──
+
+func (r *DashboardRepo) CountActive() (int64, error) {
+	var count int64
+	err := r.DB.Model(&domain.Contract{}).
+		Where("status IN ?", []string{"active", "arrears"}).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *DashboardRepo) MonthlyRevenue(year int, month int) (float64, error) {
+	var total float64
+	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	endDate := startDate.AddDate(0, 1, 0)
+	err := r.DB.Model(&domain.Payment{}).
+		Where("voided = ? AND paid_at >= ? AND paid_at < ?", false, startDate, endDate).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&total).Error
+	return total, err
+}
+
+func (r *DashboardRepo) CountOverdue() (int64, error) {
+	var count int64
+	err := r.DB.Model(&domain.Contract{}).
+		Where("status = ?", "arrears").
+		Count(&count).Error
+	return count, err
+}
+
+func (r *DashboardRepo) CountNewThisMonth(year int, month int) (int64, error) {
+	var count int64
+	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	endDate := startDate.AddDate(0, 1, 0)
+	err := r.DB.Model(&domain.Contract{}).
+		Where("created_at >= ? AND created_at < ?", startDate, endDate).
+		Count(&count).Error
+	return count, err
 }

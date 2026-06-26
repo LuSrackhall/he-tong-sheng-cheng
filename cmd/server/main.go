@@ -56,6 +56,7 @@ func main() {
 		quit <- syscall.SIGTERM
 	}
 	backupH := handler.NewBackupHandler(deps.DB, dbPath, shutdownFn)
+	dashboardH := handler.NewDashboardHandler(deps.DashboardRepo)
 
 	r := gin.New()
 
@@ -119,6 +120,8 @@ func main() {
 			protected.GET("/print/receipt/:id", printH.PrintReceipt)
 
 			protected.GET("/arrears", arrearsH.List)
+
+			protected.GET("/dashboard/stats", dashboardH.Stats)
 		}
 
 		admin := api.Group("/admin")

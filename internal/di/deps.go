@@ -21,6 +21,7 @@ type Dependencies struct {
 	TemplateRepo    *common.TemplateRepo
 	UserRepo        *common.UserRepo
 	ArrearsRepo     *common.ArrearsRecordRepo
+	DashboardRepo   *common.DashboardRepo
 }
 
 func Initialize(cfg *config.Config) *Dependencies {
@@ -48,5 +49,6 @@ func Initialize(cfg *config.Config) *Dependencies {
 		TemplateRepo:    common.NewTemplateRepo(db),
 		UserRepo:        common.NewUserRepo(db),
 		ArrearsRepo:     common.NewArrearsRecordRepo(db),
+		DashboardRepo:   common.NewDashboardRepo(db),
 	}
 }
