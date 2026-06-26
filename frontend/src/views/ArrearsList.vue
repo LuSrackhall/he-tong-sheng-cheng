@@ -25,6 +25,8 @@ const suggestedActions: Record<number, string> = {
   5: '进入追讨，法律途径',
 }
 
+const allEmpty = computed(() => arrearsContracts.value.length === 0 && !loading.value)
+
 const filteredContracts = computed(() =>
   arrearsContracts.value.filter((c: any) => c.arrearsLevel === activeTab.value)
 )
@@ -74,6 +76,11 @@ function goToCollect(c: any) {
     </div>
 
     <div v-if="loading" class="empty-state">加载中...</div>
+    <div v-else-if="allEmpty" class="empty-state-all">
+      <div style="font-size: 2rem; margin-bottom: var(--space-sm);">✅</div>
+      <div style="font-weight: 600; margin-bottom: var(--space-xs);">暂无需要催缴的合同</div>
+      <div style="color: var(--color-text-tertiary); font-size: 0.875rem;">所有合同收款状态正常</div>
+    </div>
     <div v-else-if="filteredContracts.length === 0" class="empty-state">
       暂无{{ tabs.find(t => t.level === activeTab)?.name }}的合同
     </div>
@@ -125,5 +132,14 @@ function goToCollect(c: any) {
   background: var(--color-border);
   color: var(--color-text-secondary);
   margin-left: 6px;
+}
+
+.empty-state-all {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-lg);
+  margin-top: var(--space-lg);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 </style>

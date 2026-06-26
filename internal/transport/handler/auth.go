@@ -12,15 +12,15 @@ import (
 )
 
 type AuthHandler struct {
-	userRepo  domain.UserRepo
-	authmw    *middleware.AuthMiddleware
-	limiter   *security.LoginRateLimiter
+	userRepo domain.UserRepo
+	authmw   *middleware.AuthMiddleware
+	limiter  *security.LoginRateLimiter
 }
 
-func NewAuthHandler(userRepo domain.UserRepo, jwtSecret string, limiter *security.LoginRateLimiter) *AuthHandler {
+func NewAuthHandler(userRepo domain.UserRepo, authmw *middleware.AuthMiddleware, limiter *security.LoginRateLimiter) *AuthHandler {
 	return &AuthHandler{
 		userRepo: userRepo,
-		authmw:   middleware.NewAuthMiddleware(jwtSecret),
+		authmw:   authmw,
 		limiter:  limiter,
 	}
 }
@@ -41,20 +41,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	var req loginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入用户名和密码"})
 		return
 	}
 
 	user, err := h.userRepo.GetByUsername(req.Username)
 	if err != nil {
 		h.limiter.RecordFailure(ip)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		h.limiter.RecordFailure(ip)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, err := h.authmw.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成令牌失败"})
 		return
 	}
 
@@ -97,7 +97,7 @@ type createUserReq struct {
 func (h *AuthHandler) CreateUser(c *gin.Context) {
 	var req createUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入用户名和密码"})
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建用户失败"})
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 		Role:     req.Role,
 	}
 	if err := h.userRepo.Create(user); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Username already exists"})
+		c.JSON(http.StatusConflict, gin.H{"error": "用户名已存在"})
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 func (h *AuthHandler) ListUsers(c *gin.Context) {
 	users, err := h.userRepo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list users"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户列表失败"})
 		return
 	}
 
@@ -153,7 +153,7 @@ func (h *AuthHandler) ListUsers(c *gin.Context) {
 func (h *AuthHandler) DeleteUser(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户 ID"})
 		return
 	}
 
@@ -198,10 +198,10 @@ func (h *AuthHandler) DeleteUser(c *gin.Context) {
 	}
 
 	if err := h.userRepo.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除用户失败"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "用户已删除"})
 }
 
 type changePasswordReq struct {

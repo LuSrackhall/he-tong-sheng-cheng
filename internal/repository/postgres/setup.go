@@ -43,34 +43,18 @@ func Setup(host, port, user, pass, dbname, sslmode, adminPassword string) (*gorm
 
 	// Seed default admin user
 	var count int64
-	db.Model(&domain.User{}).Count(&count)
+	if err := db.Model(&domain.User{}).Count(&count).Error; err != nil {
+		return nil, err
+	}
 	if count == 0 {
 		hash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 		if err != nil {
 			log.Fatalf("Failed to hash admin password: %v", err)
 		}
-		db.Create(&domain.User{Username: "admin", Password: string(hash), Role: "admin"})
+		if err := db.Create(&domain.User{Username: "admin", Password: string(hash), Role: "admin"}).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return db, nil
 }
-
-type AssetRepo struct{ db *gorm.DB }
-type TenantRepo struct{ db *gorm.DB }
-type ContractRepo struct{ db *gorm.DB }
-type PaymentRepo struct{ db *gorm.DB }
-type ReceiptRepo struct{ db *gorm.DB }
-type ReceiptBookRepo struct{ db *gorm.DB }
-type TemplateRepo struct{ db *gorm.DB }
-type UserRepo struct{ db *gorm.DB }
-type ArrearsRecordRepo struct{ db *gorm.DB }
-
-func NewAssetRepo(db *gorm.DB) *AssetRepo          { return &AssetRepo{db} }
-func NewTenantRepo(db *gorm.DB) *TenantRepo          { return &TenantRepo{db} }
-func NewContractRepo(db *gorm.DB) *ContractRepo      { return &ContractRepo{db} }
-func NewPaymentRepo(db *gorm.DB) *PaymentRepo        { return &PaymentRepo{db} }
-func NewReceiptRepo(db *gorm.DB) *ReceiptRepo        { return &ReceiptRepo{db} }
-func NewReceiptBookRepo(db *gorm.DB) *ReceiptBookRepo { return &ReceiptBookRepo{db} }
-func NewTemplateRepo(db *gorm.DB) *TemplateRepo       { return &TemplateRepo{db} }
-func NewUserRepo(db *gorm.DB) *UserRepo              { return &UserRepo{db} }
-func NewArrearsRecordRepo(db *gorm.DB) *ArrearsRecordRepo { return &ArrearsRecordRepo{db} }

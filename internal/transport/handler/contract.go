@@ -43,7 +43,7 @@ func (h *ContractHandler) List(c *gin.Context) {
 
 	contracts, total, err := h.repo.List(search, status, offset, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list contracts"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取合同列表失败"})
 		return
 	}
 
@@ -53,29 +53,29 @@ func (h *ContractHandler) List(c *gin.Context) {
 func (h *ContractHandler) Create(c *gin.Context) {
 	var req contractReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Asset ID, tenant ID, dates, and monthly rent are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入资产 ID、租户 ID、租期和月租金"})
 		return
 	}
 
 	startDate, err := time.ParseInLocation("2006-01-02", req.StartDate, time.Local)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start date format, use YYYY-MM-DD"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "开始日期格式无效，请使用 YYYY-MM-DD"})
 		return
 	}
 	endDate, err := time.ParseInLocation("2006-01-02", req.EndDate, time.Local)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end date format, use YYYY-MM-DD"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "结束日期格式无效，请使用 YYYY-MM-DD"})
 		return
 	}
 	if !endDate.After(startDate) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "End date must be after start date"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "结束日期必须晚于开始日期"})
 		return
 	}
 
 	// 使用 SQL 条件查询检测合同重叠，避免加载全部活跃合同到内存
 	overlap, err := h.repo.CheckOverlap(req.AssetID, req.TenantID, startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing contracts"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "检查已有合同失败"})
 		return
 	}
 	if overlap {
@@ -90,7 +90,7 @@ func (h *ContractHandler) Create(c *gin.Context) {
 	if req.TemplateID != nil && *req.TemplateID != 0 {
 		tpl, err := h.templateRepo.GetByID(*req.TemplateID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Assigned template not found"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "指定的模板不存在"})
 			return
 		}
 		if !tpl.Validated {
@@ -132,7 +132,7 @@ func (h *ContractHandler) Create(c *gin.Context) {
 		Notes:           req.Notes,
 	}
 	if err := h.repo.Create(contract); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create contract"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建合同失败"})
 		return
 	}
 
@@ -142,13 +142,13 @@ func (h *ContractHandler) Create(c *gin.Context) {
 func (h *ContractHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的合同 ID"})
 		return
 	}
 
 	contract, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "合同不存在"})
 		return
 	}
 
@@ -158,19 +158,19 @@ func (h *ContractHandler) Get(c *gin.Context) {
 func (h *ContractHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的合同 ID"})
 		return
 	}
 
 	contract, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "合同不存在"})
 		return
 	}
 
 	var req contractReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求参数"})
 		return
 	}
 
@@ -204,7 +204,7 @@ func (h *ContractHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.repo.Update(contract); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update contract"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新合同失败"})
 		return
 	}
 
@@ -218,7 +218,7 @@ type templateReq struct {
 func (h *ContractHandler) ListTemplates(c *gin.Context) {
 	templates, err := h.templateRepo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list templates"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取模板列表失败"})
 		return
 	}
 	c.JSON(http.StatusOK, templates)
@@ -227,7 +227,7 @@ func (h *ContractHandler) ListTemplates(c *gin.Context) {
 func (h *ContractHandler) CreateTemplate(c *gin.Context) {
 	var req templateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Template name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入模板名称"})
 		return
 	}
 
@@ -253,7 +253,7 @@ func (h *ContractHandler) CreateTemplate(c *gin.Context) {
 }`,
 	}
 	if err := h.templateRepo.Create(tpl); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create template"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建模板失败"})
 		return
 	}
 	c.JSON(http.StatusCreated, tpl)
@@ -262,13 +262,13 @@ func (h *ContractHandler) CreateTemplate(c *gin.Context) {
 func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的模板 ID"})
 		return
 	}
 
 	tpl, err := h.templateRepo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "模板不存在"})
 		return
 	}
 
@@ -277,7 +277,7 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 		ActiveFields string `json:"activeFields"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Field map is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入字段映射"})
 		return
 	}
 
@@ -323,7 +323,7 @@ func (h *ContractHandler) UpdateTemplateMapping(c *gin.Context) {
 	}
 
 	if err := h.templateRepo.Update(tpl); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template mapping"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新模板映射失败"})
 		return
 	}
 

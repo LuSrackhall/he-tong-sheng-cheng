@@ -60,19 +60,19 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "缺少认证信息"})
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "认证格式无效"})
 			return
 		}
 
 		claims, err := m.ParseToken(parts[1])
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "令牌无效或已过期"})
 			return
 		}
 
@@ -87,7 +87,7 @@ func (m *AuthMiddleware) RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, _ := c.Get("role")
 		if role != "admin" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "需要管理员权限"})
 			return
 		}
 		c.Next()

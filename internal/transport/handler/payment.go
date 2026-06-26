@@ -35,13 +35,13 @@ type paymentReq struct {
 func (h *PaymentHandler) ListByContract(c *gin.Context) {
 	contractID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的合同 ID"})
 		return
 	}
 
 	payments, err := h.repo.ListByContractID(uint(contractID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list payments"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取收款记录失败"})
 		return
 	}
 
@@ -51,18 +51,18 @@ func (h *PaymentHandler) ListByContract(c *gin.Context) {
 func (h *PaymentHandler) Create(c *gin.Context) {
 	contractID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的合同 ID"})
 		return
 	}
 
 	var req paymentReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Amount is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入收款金额"})
 		return
 	}
 
 	if req.Amount <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Amount must be positive"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "收款金额必须大于零"})
 		return
 	}
 

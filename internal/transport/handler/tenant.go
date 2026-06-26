@@ -41,7 +41,7 @@ func (h *TenantHandler) List(c *gin.Context) {
 
 	tenants, total, err := h.repo.List(search, offset, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list tenants"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取租户列表失败"})
 		return
 	}
 
@@ -56,7 +56,7 @@ func (h *TenantHandler) List(c *gin.Context) {
 func (h *TenantHandler) Create(c *gin.Context) {
 	var req tenantReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入租户名称"})
 		return
 	}
 
@@ -68,7 +68,7 @@ func (h *TenantHandler) Create(c *gin.Context) {
 		ExtraFields: req.ExtraFields,
 	}
 	if err := h.repo.Create(tenant); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create tenant"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建租户失败"})
 		return
 	}
 
@@ -78,13 +78,13 @@ func (h *TenantHandler) Create(c *gin.Context) {
 func (h *TenantHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的租户 ID"})
 		return
 	}
 
 	tenant, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Tenant not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "租户不存在"})
 		return
 	}
 
@@ -94,19 +94,19 @@ func (h *TenantHandler) Get(c *gin.Context) {
 func (h *TenantHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的租户 ID"})
 		return
 	}
 
 	tenant, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Tenant not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "租户不存在"})
 		return
 	}
 
 	var req tenantReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求参数"})
 		return
 	}
 
@@ -123,7 +123,7 @@ func (h *TenantHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.repo.Update(tenant); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update tenant"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新租户失败"})
 		return
 	}
 

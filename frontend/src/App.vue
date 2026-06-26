@@ -49,29 +49,33 @@ watch(() => auth.isLoggedIn, async (val) => {
     <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-logo">租赁管家</div>
       <nav class="sidebar-nav" @click="sidebarOpen = false">
-        <div class="nav-group-label">日常操作</div>
+        <router-link to="/">
+          <span>📊</span> 概览
+        </router-link>
+        <div class="nav-separator" />
+        <div class="nav-group-label">业务管理</div>
         <router-link to="/new-contract" class="nav-primary-action">
           <span>📝</span> 签新合同
         </router-link>
         <router-link to="/collect-rent">
           <span>💰</span> 收租金
         </router-link>
+        <router-link to="/contracts">
+          <span>📄</span> 合同管理
+        </router-link>
         <router-link to="/arrears">
           <span>📊</span> 催缴清单
         </router-link>
         <div class="nav-separator" />
-        <div class="nav-group-label">数据管理</div>
+        <div class="nav-group-label">基础数据</div>
         <router-link to="/assets">
           <span>🏠</span> 资产管理
         </router-link>
         <router-link to="/tenants">
           <span>👤</span> 租户管理
         </router-link>
-        <router-link to="/contracts">
-          <span>📄</span> 合同管理
-        </router-link>
         <div class="nav-separator" />
-        <div class="nav-group-label">系统设置</div>
+        <div class="nav-group-label">系统管理</div>
         <router-link to="/settings">
           <span>🔧</span> 模板设置
           <span v-if="templateCount === 0" class="nav-warning-dot"></span>

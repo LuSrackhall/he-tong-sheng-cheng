@@ -24,39 +24,39 @@ import (
 func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的模板 ID"})
 		return
 	}
 
 	tpl, err := h.templateRepo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "模板不存在"})
 		return
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File is required (field name: file)"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请上传文件（字段名: file）"})
 		return
 	}
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if ext != ".docx" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Only .docx files are allowed"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "仅支持 .docx 格式文件"})
 		return
 	}
 
 	// Read file into memory for validation
 	src, err := file.Open()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read uploaded file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "读取上传文件失败"})
 		return
 	}
 	defer src.Close()
 
 	fileData, err := io.ReadAll(src)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read uploaded file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "读取上传文件失败"})
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 	if len(activeFields) > 0 {
 		missing, err := docx.ValidatePlaceholders(fileData, validateFields(activeFields))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse docx: " + err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "解析 Word 文件失败: " + err.Error()})
 			return
 		}
 		if len(missing) > 0 {
@@ -83,19 +83,19 @@ func (h *ContractHandler) UploadTemplate(c *gin.Context) {
 
 	uploadDir := "uploads/templates"
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建上传目录失败"})
 		return
 	}
 
 	destPath := filepath.Join(uploadDir, fmt.Sprintf("template_%d.docx", id))
 	if err := os.WriteFile(destPath, fileData, 0644); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存文件失败"})
 		return
 	}
 
 	tpl.FilePath = destPath
 	if err := h.templateRepo.Update(tpl); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新模板失败"})
 		return
 	}
 
@@ -178,13 +178,13 @@ func (h *ContractHandler) validateContractForExport(contract *domain.Contract) (
 func (h *ContractHandler) DownloadContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的合同 ID"})
 		return
 	}
 
 	contract, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "合同不存在"})
 		return
 	}
 
@@ -220,13 +220,13 @@ func (h *ContractHandler) DownloadContract(c *gin.Context) {
 func (h *ContractHandler) PreviewContract(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contract ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的合同 ID"})
 		return
 	}
 
 	contract, err := h.repo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contract not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "合同不存在"})
 		return
 	}
 
@@ -331,19 +331,19 @@ func parseUncommentedFieldMapKeys(raw string) []string {
 func (h *ContractHandler) DeleteTemplate(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的模板 ID"})
 		return
 	}
 
 	_, err = h.templateRepo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "模板不存在"})
 		return
 	}
 
 	used, err := h.templateRepo.IsUsedByContract(uint(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check template usage"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "检查模板使用情况失败"})
 		return
 	}
 	if used {
@@ -352,7 +352,7 @@ func (h *ContractHandler) DeleteTemplate(c *gin.Context) {
 	}
 
 	if err := h.templateRepo.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete template"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除模板失败"})
 		return
 	}
 
@@ -363,13 +363,13 @@ func (h *ContractHandler) DeleteTemplate(c *gin.Context) {
 func (h *ContractHandler) DownloadTemplate(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的模板 ID"})
 		return
 	}
 
 	tpl, err := h.templateRepo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "模板不存在"})
 		return
 	}
 
@@ -395,13 +395,13 @@ func (h *ContractHandler) DownloadTemplate(c *gin.Context) {
 func (h *ContractHandler) PreviewTemplate(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的模板 ID"})
 		return
 	}
 
 	tpl, err := h.templateRepo.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "模板不存在"})
 		return
 	}
 

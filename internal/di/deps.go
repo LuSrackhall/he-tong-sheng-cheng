@@ -2,7 +2,7 @@ package di
 
 import (
 	"asset-leasing-system/internal/config"
-	"asset-leasing-system/internal/domain"
+	"asset-leasing-system/internal/repository/common"
 	"asset-leasing-system/internal/repository/postgres"
 	"asset-leasing-system/internal/repository/sqlite"
 	"log"
@@ -12,15 +12,16 @@ import (
 
 type Dependencies struct {
 	DB              *gorm.DB
-	AssetRepo       domain.AssetRepo
-	TenantRepo      domain.TenantRepo
-	ContractRepo    domain.ContractRepo
-	PaymentRepo     domain.PaymentRepo
-	ReceiptRepo     domain.ReceiptRepo
-	ReceiptBookRepo domain.ReceiptBookRepo
-	TemplateRepo    domain.TemplateRepo
-	UserRepo        domain.UserRepo
-	ArrearsRepo     domain.ArrearsRecordRepo
+	AssetRepo       *common.AssetRepo
+	TenantRepo      *common.TenantRepo
+	ContractRepo    *common.ContractRepo
+	PaymentRepo     *common.PaymentRepo
+	ReceiptRepo     *common.ReceiptRepo
+	ReceiptBookRepo *common.ReceiptBookRepo
+	TemplateRepo    *common.TemplateRepo
+	UserRepo        *common.UserRepo
+	ArrearsRepo     *common.ArrearsRecordRepo
+	DashboardRepo   *common.DashboardRepo
 }
 
 func Initialize(cfg *config.Config) *Dependencies {
@@ -34,39 +35,20 @@ func Initialize(cfg *config.Config) *Dependencies {
 		db, err = sqlite.Setup(cfg.DBName+".db", cfg.AdminPassword)
 	}
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("数据库连接失败: %v", err)
 	}
 
-	return wire(cfg, db)
-}
-
-func wire(cfg *config.Config, db *gorm.DB) *Dependencies {
-	switch cfg.Mode {
-	case "postgres":
-		return &Dependencies{
-			DB:              db,
-			AssetRepo:       postgres.NewAssetRepo(db),
-			TenantRepo:      postgres.NewTenantRepo(db),
-			ContractRepo:    postgres.NewContractRepo(db),
-			PaymentRepo:     postgres.NewPaymentRepo(db),
-			ReceiptRepo:     postgres.NewReceiptRepo(db),
-			ReceiptBookRepo: postgres.NewReceiptBookRepo(db),
-			TemplateRepo:    postgres.NewTemplateRepo(db),
-			UserRepo:        postgres.NewUserRepo(db),
-			ArrearsRepo:     postgres.NewArrearsRecordRepo(db),
-		}
-	default:
-		return &Dependencies{
-			DB:              db,
-			AssetRepo:       sqlite.NewAssetRepo(db),
-			TenantRepo:      sqlite.NewTenantRepo(db),
-			ContractRepo:    sqlite.NewContractRepo(db),
-			PaymentRepo:     sqlite.NewPaymentRepo(db),
-			ReceiptRepo:     sqlite.NewReceiptRepo(db),
-			ReceiptBookRepo: sqlite.NewReceiptBookRepo(db),
-			TemplateRepo:    sqlite.NewTemplateRepo(db),
-			UserRepo:        sqlite.NewUserRepo(db),
-			ArrearsRepo:     sqlite.NewArrearsRecordRepo(db),
-		}
+	return &Dependencies{
+		DB:              db,
+		AssetRepo:       common.NewAssetRepo(db),
+		TenantRepo:      common.NewTenantRepo(db),
+		ContractRepo:    common.NewContractRepo(db),
+		PaymentRepo:     common.NewPaymentRepo(db),
+		ReceiptRepo:     common.NewReceiptRepo(db),
+		ReceiptBookRepo: common.NewReceiptBookRepo(db),
+		TemplateRepo:    common.NewTemplateRepo(db),
+		UserRepo:        common.NewUserRepo(db),
+		ArrearsRepo:     common.NewArrearsRecordRepo(db),
+		DashboardRepo:   common.NewDashboardRepo(db),
 	}
 }

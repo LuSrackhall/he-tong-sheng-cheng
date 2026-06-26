@@ -18,8 +18,6 @@ type Config struct {
 	AdminPassword  string
 	Port           string
 	UploadDir      string
-	AIProviderURL  string
-	AIProviderKey  string
 	DefaultCurrency string
 }
 
@@ -49,8 +47,6 @@ func Load() *Config {
 		DBName:         envOrDefault("DB_NAME", *flagDBName),
 		Port:           envOrDefault("PORT", *flagPort),
 		UploadDir:      envOrDefault("UPLOAD_DIR", "./uploads"),
-		AIProviderURL:  envOrDefault("AI_PROVIDER_URL", ""),
-		AIProviderKey:  envOrDefault("AI_PROVIDER_KEY", ""),
 		DefaultCurrency: envOrDefault("DEFAULT_CURRENCY", "CNY"),
 		DBSSLMode:       envOrDefault("DB_SSLMODE", "disable"),
 	}
