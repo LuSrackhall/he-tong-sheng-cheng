@@ -9,7 +9,7 @@
 ## 核心原则
 
 1. **主会话 = 纯调度者**。不参与设计决策、不写业务代码、不进入 myspec 流程内部。**不得执行任何 git 写操作**（merge / commit / checkout / rebase），仅可执行只读操作（log / diff / status / show）
-2. **每个 change 的完整生命周期由一个 myspec agent 执行**。通过 Skill 工具调用 myspec 技能链（br → propose → apply → verify → merge → archive），全程在同一 agent 中完成
+2. **每个 change 的完整生命周期由一个 myspec agent 执行**。通过 Skill 工具调用 myspec 技能链（br[含 gwt] → propose → apply → verify → merge → archive），全程在同一 agent 中完成
 3. **myspec agent 按需自派答复团队**。myspec agent 拥有 Agent 工具，在需要时自行派遣 architect/reviewer/qa 等子智能体，用完即释放
 4. **上下文隔离**。不同 change 的 myspec agent 互相独立，防止跨 change 上下文污染
 5. **主会话仅在合并时机上介入**。协调多个 change 对 main 的串行合入
@@ -81,8 +81,8 @@
 
 - **职责**：
   - 通过 Skill 工具依次调用 myspec 技能链：
-    - `myspec-gwt` → 创建 worktree
-    - `myspec-br` → 苏格拉底式设计对话
+    - `myspec-br` → 苏格拉底式设计对话（结束后自动调用 myspec-gwt 创建工作树）
+    - `myspec-gwt` → 创建工作树（由 myspec-br 自动调用，无需手动触发）
     - `myspec-propose` → 生成方案工件
     - `myspec-apply` → 按 task group 实施代码
     - `myspec-verify` → 验证实现
@@ -174,9 +174,11 @@ Phase 1: 设计
   ├── 子智能体之间互相挑战假设、评估方案、质疑盲点
   ├── myspec agent 综合各视角结论，推进设计收敛
   ├── myspec agent 自行决定需要哪些视角、派遣多少子智能体
-  └── 设计文档完成，进入下一阶段
+  ├── 设计文档完成
+  └── 自动调用 Skill("myspec-gwt") 创建工作树，后续阶段在工作树中进行
 
   注：苏格拉底式对话完全在子智能体团队内部进行，主会话不参与设计对话。
+  注：所有 myspec 子智能体必须在工作树中工作，工作树在 myspec-br 结束时创建。
 
 Phase 2: 方案
   Skill: myspec-propose
