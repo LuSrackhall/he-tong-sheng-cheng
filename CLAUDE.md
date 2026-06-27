@@ -13,7 +13,7 @@
 3. **myspec agent 按需自派答复团队**。myspec agent 拥有 Agent 工具，在需要时自行派遣 architect/reviewer/qa 等子智能体，用完即释放
 4. **上下文隔离**。不同 change 的 myspec agent 互相独立，防止跨 change 上下文污染
 5. **主会话仅在合并时机上介入**。协调多个 change 对 main 的串行合入
-6. **持续追加**。用户可随时追加新问题，主会话即时派遣新 agent，不等待前一个完成
+6. **持续追加**。用户可随时追加新问题，主会话即时派遣**新的** myspec agent，不等待前一个完成，不得将新需求追加到运行中的 myspec agent
 
 ## 团队架构
 
@@ -240,6 +240,7 @@ Phase 7: 归档
 - ❌ 主会话预派遣答复团队（应由 myspec agent 按需自派）
 - ❌ **主会话执行 git 写操作**（merge / commit / checkout / rebase），即使是为了解决 myspec agent 的障碍
 - ❌ **主会话绕过 myspec 流程**。当 myspec agent 遇到障碍时，主会话必须报告用户并等待决策，不得自行接管或派遣非 myspec 的替代 agent
+- ❌ **主会话通过 SendMessage 追加新需求到运行中的 myspec agent**。新需求必须派遣新的 myspec agent
 - ❌ 答复团队只回答被问到的问题，不主动发现缺失
 - ❌ reviewer 只检查代码质量，不检查用户路径
 - ❌ qa 只验证技术功能，不走真实用户流程
@@ -270,6 +271,15 @@ myspec agent prompt 必须包含：
 
 - **不设硬性并行上限**，由用户根据硬件资源自行决定并行数量
 - 每个 myspec agent 同时派遣的答复团队子智能体不超过 3 个
+
+### 追加规则
+
+- 每个 change 由独立的 myspec agent 负责，即使多个 change 修改同一文件
+- 用户追加的新需求，无论与当前 change 是否相关，都必须派遣**新的** myspec agent
+- 主会话不得通过 SendMessage 向运行中的 myspec agent 追加新需求或新 change
+- SendMessage 仅用于以下场景：
+  - **合入调度信号**：主会话通知 myspec agent "可以合入"
+  - **拒绝合入**：主会话通知 myspec agent "暂不合入"及原因
 
 ## 提交规范
 
