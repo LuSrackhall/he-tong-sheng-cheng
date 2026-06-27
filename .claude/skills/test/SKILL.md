@@ -1,6 +1,6 @@
 ---
-name: project-constitution
-description: 项目宪法 — 资产租赁与催缴管理系统的工作流规则、团队架构、角色定义、强制工作流、提交规范。在任何涉及代码变更、agent 派遣、团队协作的对话中必须首先加载。
+name: test
+description: 测试用，无需加载
 ---
 
 # 项目宪法 — 资产租赁与催缴管理系统
