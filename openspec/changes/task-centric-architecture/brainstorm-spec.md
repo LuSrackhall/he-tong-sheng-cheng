@@ -493,6 +493,87 @@ e2e/                                # Playwright 测试（Browser Adapter 产物
 | Trace 存储量随时间增长 | Phase 1 用文件系统自动轮转，Phase 3+ 可迁移到 Event Store |
 | UI 频繁变化导致 UI mapping drift 常态化 | CI 不阻断单次 drift，但监控持续下降趋势触发告警 |
 
+## Constitution Enforcement Model
+
+Constitution 如果只是文档，就仍然是"设计原则"而非"系统层约束"。必须被 Runtime 可计算地执行（computationally enforceable）。
+
+### 三层 Enforcement Gate
+
+```
+              Constitution (13 axioms)
+                      │
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+  Pre-execution   Runtime      Post-execution
+  Guard           Guard        Audit
+  (Plan-time)     (Adapter)    (Trace)
+```
+
+#### 1. Pre-execution Guard（Plan-time check）
+
+**触发点：** Knowledge Runtime 生成 Execution Plan 之后、发出之前
+
+**检查项：**
+
+| 宪法条 | 检查 | 实现方式 |
+|--------|------|----------|
+| §1 Knowledge Authority | Plan 的 capability_id 必须在 knowledge/ 中注册 | capability registry lookup |
+| §2 Capability Atomicity | 所有 step 可回溯到 capability 或 workflow | DAG source tracking |
+| §3 Plan Immutability | plan_hash 在 emit 前不可变 | hash lock |
+| §4 Separation | Plan 不包含业务逻辑执行指令 | schema validation |
+| §9 UI as Derived | Plan 不包含 UI selector 信息 | field validation |
+| §12 Knowledge Evolution | Plan 不包含 self-modification 指令 | pattern detection |
+
+**失败处理：** Plan rejected。Runtime 返回 `ErrConstitutionViolation{axiom, detail}`。不写入 Trace。
+
+#### 2. Runtime Guard（Adapter check）
+
+**触发点：** Adapter 执行 Execution Plan 期间
+
+**检查项：**
+
+| 宪法条 | 检查 | 实现方式 |
+|--------|------|----------|
+| §5 Adapter Purity | Adapter 不修改 Plan、不注入新 step | step hash chain |
+| §6 No Semantic Backflow | Adapter 不可回写 Feedback 到 Plan | write permission boundary |
+| §10 Determinism Gradient | Adapter 不隐式降级自己的 execution profile | profile check |
+
+**失败处理：** 当前 step 标记为 `constitution_violation`，Adapter 可继续或中止（取决于 execution_profile：strict 必须中止，exploratory 可继续但记录）。
+
+#### 3. Post-execution Audit（Trace check）
+
+**触发点：** Trace 写入后、进入 CI 前
+
+**检查项：**
+
+| 宪法条 | 检查 | 实现方式 |
+|--------|------|----------|
+| §7 Trace Irreversibility | Trace 写入后 hash 不变 | content-addressable storage |
+| §8 CI as Observer | CI 不修改 Trace | read-only CI pipeline |
+| §10 Determinism Gradient | Trace 中 execution_profile 与实际行为一致 | profile attestation |
+| §11 Drift is Temporal | drift 报告基于时间窗口而非单点 | windowed aggregation check |
+
+**失败处理：** 不阻断（Trace 已存在）。生成 `ConstitutionAuditReport` 作为 Feedback 输入。
+
+### Enforcement 与 Phase 的关系
+
+| Phase | 实现的 Gate | 理由 |
+|-------|-------------|------|
+| 1 (Kernel) | Pre-execution Guard | CLI Adapter 执行前校验 Plan 合法性 |
+| 2 (Browser + CI) | Post-execution Audit | CI 引入后需要验证 Trace 与 Constitution 一致 |
+| 3 (Exploration) | Runtime Guard（部分） | Agent 执行需要约束 Adapter Purity |
+| 4 (MCP) | Runtime Guard（完整） | 生产环境需要全量运行时检查 |
+
+### Guard 的 Constitution 依据
+
+三层 Gate 各自的权威来源遵循 **§0 Precedence of Truth Sources**：
+
+- Pre-execution Guard 的依据是 §1–§4、§9、§12（高优先级定义）
+- Runtime Guard 的依据是 §5、§6、§10（中优先级约束）
+- Post-execution Audit 的依据是 §7、§8、§10、§11（低优先级验证）
+
+**Guard 之间不冲突。** 如果 Pre-execution Guard 通过了，Runtime Guard 就不应因同一 § 拒绝。如果发生，说明 Constitution 有歧义，触发 Constitution 版本升级（appendix only）。
+
 ## 参考文献
 
 - **TCA Constitution v1.1** — `system/constitution.md`（全局不变式层，13 条不可违反公理）
