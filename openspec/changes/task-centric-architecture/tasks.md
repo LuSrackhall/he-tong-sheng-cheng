@@ -26,14 +26,14 @@
 
 ## 3. Pre-execution Constitution Guard
 
-- [ ] 3.1 实现 `runtime/internal/guard/` Pre-execution Guard 框架（§-aware 检查接口）
-- [ ] 3.2 实现 §1 Knowledge Authority 检查（capability_id 注册验证）
-- [ ] 3.3 实现 §2 Capability Atomicity 检查（所有 step 可回溯）
-- [ ] 3.4 实现 §3 Plan Immutability 检查（plan_hash 在 emit 前锁定）
-- [ ] 3.5 实现 §4 Separation of Concerns 检查（Plan 不含业务逻辑指令）
-- [ ] 3.6 实现 §9 UI as Derived 检查（Plan 不含 UI selector 信息）
-- [ ] 3.7 实现 Guard 宽松模式（`--validate=false` 跳过）
-- [ ] 3.8 编写 Guard 单元测试（合法 Plan、非法 Plan、边界情况）
+- [x] 3.1 实现 `runtime/internal/guard/` Pre-execution Guard 框架（§-aware 检查接口）
+- [x] 3.2 实现 §1 Knowledge Authority 检查（capability_id 注册验证）
+- [x] 3.3 实现 §2 Capability Atomicity 检查（所有 step 可回溯）
+- [x] 3.4 实现 §3 Plan Immutability 检查（plan_hash 在 emit 前锁定）
+- [x] 3.5 实现 §4 Separation of Concerns 检查（Plan 不含业务逻辑指令）
+- [x] 3.6 实现 §9 UI as Derived 检查（Plan 不含 UI selector 信息）
+- [x] 3.7 实现 Guard 宽松模式（`--validate=false` 跳过）
+- [x] 3.8 编写 Guard 单元测试（合法 Plan、非法 Plan、边界情况）
 
 ## 4. CLI Adapter
 
