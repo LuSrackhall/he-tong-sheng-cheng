@@ -53,9 +53,9 @@
 
 ## 6. CI 基础验证（Phase 1 最小版本）
 
-- [ ] 6.1 实现 CI Knowledge Runtime validation 脚本（引用完整性、DAG 无环）
-- [ ] 6.2 将 CI validation 接入 `.github/workflows/ci.yml`
-- [ ] 6.3 编写集成测试：`kr plan` 覆盖所有 Capability、`kr run` 覆盖核心流程
+- [x] 6.1 实现 CI Knowledge Runtime validation 脚本（引用完整性、DAG 无环）
+- [x] 6.2 将 CI validation 接入 `.github/workflows/ci.yml`
+- [x] 6.3 编写集成测试：`kr plan` 覆盖所有 Capability、`kr run` 覆盖核心流程
 
 ---
 
