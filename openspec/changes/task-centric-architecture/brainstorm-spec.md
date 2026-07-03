@@ -492,3 +492,7 @@ e2e/                                # Playwright 测试（Browser Adapter 产物
 | Execution Plan snapshot 版本管理复杂度 | Phase 1 只做文件级版本锁定，不引入数据库 |
 | Trace 存储量随时间增长 | Phase 1 用文件系统自动轮转，Phase 3+ 可迁移到 Event Store |
 | UI 频繁变化导致 UI mapping drift 常态化 | CI 不阻断单次 drift，但监控持续下降趋势触发告警 |
+
+## 参考文献
+
+- **TCA Constitution v1.1** — `system/constitution.md`（全局不变式层，13 条不可违反公理）
