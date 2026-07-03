@@ -170,12 +170,21 @@ type Runtime interface {
 }
 ```
 
+**系统边界（关键）：** Knowledge Runtime 不执行业务逻辑。它只产生 Execution Plan。实际业务逻辑由领域层（Go backend `internal/domain/`）执行。Runtime ≠ workflow engine ≠ application server。
+
+```
+Runtime     → 生成 Plan
+Adapter     → 执行 Plan
+Domain (Go) → 执行业务逻辑
+```
+
 ### D3: Execution Plan 是唯一契约
 
 **选择：** Knowledge Runtime 和 Adapter 之间只通过 Execution Plan 通信。
 
-**语义约束：**
-- Execution Plan 是只读的，由 Knowledge Runtime 发出后不可修改
+**生命周期约束：**
+- Execution Plan 在 Runtime 发出并分配 `plan_hash` 之后**不可变**
+- Execution Plan is frozen at the moment of Trace creation
 - Adapter 不可回写或修改 Execution Plan
 - Adapter 只能产生 Execution Trace
 
@@ -255,6 +264,8 @@ trace:
 **核心原则：**
 - Trace ≠ 日志。Trace = Execution Plan 在真实世界中的完整状态快照
 - Trace 不可逆：All execution is irreversible at the trace level. Only knowledge layer evolves.
+- Trace 不能在任何情况下修改 Execution Plan
+- Feedback may suggest changes, but only Knowledge Layer can modify Execution Plan
 - 所有系统优化只能来源于 Trace，不能来源于人工经验
 - `plan_hash` 是 Trace integrity 的关键字段，用于 CI diff / replay 校验 / drift detection
 
@@ -270,6 +281,7 @@ trace:
 
 **关键约束：**
 - CI 不验证 steps，CI 验证 semantic outcomes
+- Drift is evaluated over a rolling window of traces, not a single execution
 - Any capability with **degrading determinism trend over time** must trigger investigation
 - CI does not block on drift spikes, but blocks on sustained drift degradation trend
 
@@ -406,10 +418,11 @@ e2e/                                # Playwright 测试（Browser Adapter 产物
 ## System Definition
 
 > **The Knowledge Runtime is the operating system for business capabilities.**
+> **Knowledge Runtime does not execute business logic. It only produces Execution Plans.**
 > **Execution Plan is the runtime-neutral contract.**
 > **Runtime Adapters are the execution environments.**
 > **Trace is the immutable memory.**
-> **CI is the semantic consistency validator.**
+> **CI is the semantic consistency validator over execution graphs.**
 > **Feedback is the evolution driver.**
 > **All execution is irreversible at the trace level. Only knowledge layer evolves.**
 
