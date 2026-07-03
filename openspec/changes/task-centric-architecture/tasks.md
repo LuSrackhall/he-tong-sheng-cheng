@@ -14,15 +14,15 @@
 
 ## 2. Knowledge Runtime（Go 实现）
 
-- [ ] 2.1 创建 `runtime/` 目录及 `internal/model/`（Capability/Workflow/Rule/ExecutionPlan/Trace 结构体定义）
-- [ ] 2.2 实现 `runtime/internal/cache/` 内存缓存（Capability/Rule/Workflow/Plan 四类）
-- [ ] 2.3 实现 `runtime/internal/loader/` YAML 加载器（递归扫描、解析、验证）
-- [ ] 2.4 实现 `runtime/internal/resolver/` 引用解析（BR → Rule、workflow → capability DAG）
-- [ ] 2.5 实现 `runtime/internal/planner/` Execution Plan 生成器（含 plan_hash 分配）
-- [ ] 2.6 实现 `runtime/internal/planner/` Workflow 展开与条件分支处理
-- [ ] 2.7 实现 `runtime/internal/snapshot/` Execution Plan 版本锁定
-- [ ] 2.8 实现 Runtime 启动完整性校验（引用完整、DAG 无环）
-- [ ] 2.9 编写 `runtime/` 单元测试（loader、resolver、planner 核心逻辑）
+- [x] 2.1 创建 `runtime/` 目录及 `internal/model/`（Capability/Workflow/Rule/ExecutionPlan/Trace 结构体定义）
+- [x] 2.2 实现 `runtime/internal/cache/` 内存缓存（Capability/Rule/Workflow/Plan 四类）
+- [x] 2.3 实现 `runtime/internal/loader/` YAML 加载器（递归扫描、解析、验证）
+- [x] 2.4 实现 `runtime/internal/resolver/` 引用解析（BR → Rule、workflow → capability DAG）
+- [x] 2.5 实现 `runtime/internal/planner/` Execution Plan 生成器（含 plan_hash 分配）
+- [x] 2.6 实现 `runtime/internal/planner/` Workflow 展开与条件分支处理
+- [x] 2.7 实现 `runtime/internal/snapshot/` Execution Plan 版本锁定
+- [x] 2.8 实现 Runtime 启动完整性校验（引用完整、DAG 无环）
+- [x] 2.9 编写 `runtime/` 单元测试（loader、resolver、planner 核心逻辑）
 
 ## 3. Pre-execution Constitution Guard
 
