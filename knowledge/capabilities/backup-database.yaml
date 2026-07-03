@@ -1,0 +1,44 @@
+id: backup-database
+version: 1
+status: stable
+since: 1.3.0
+
+metadata:
+  tags: [admin, system]
+  owner: admin-team
+  priority: P1
+
+title: 备份数据库
+goal: 创建当前数据库的备份文件
+
+inputs:
+  - { name: destination, domain: String, required: false }
+
+outputs:
+  - { name: backup_file, domain: String }
+
+preconditions:
+  - BR-010  # 当前用户有管理权限
+
+effects:
+  sync:
+    creates:
+      - BackupFile
+    updates: []
+  async:
+    emits: []
+
+permissions:
+  - admin:backup
+
+dependencies:
+  requires: []
+  triggers: []
+
+observability:
+  success:
+    - "备份文件已创建"
+    - "文件大小大于 0"
+  failure:
+    - "磁盘空间不足"
+    - "权限不足"

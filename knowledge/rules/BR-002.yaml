@@ -1,0 +1,6 @@
+id: BR-002
+title: 付款金额要求
+severity: error
+description: 付款金额必须大于 0
+applies_to:
+  - collect-rent

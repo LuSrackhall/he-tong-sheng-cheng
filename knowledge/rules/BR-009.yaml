@@ -1,0 +1,6 @@
+id: BR-009
+title: Payment 有效
+severity: error
+description: Payment 必须存在且未被作废
+applies_to:
+  - issue-receipt

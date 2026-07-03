@@ -1,0 +1,6 @@
+id: BR-003
+title: 资产处于可租赁状态
+severity: error
+description: 资产必须处于可租赁状态才能创建合同
+applies_to:
+  - create-contract

@@ -1,0 +1,6 @@
+id: BR-008
+title: 合法合同期限
+severity: error
+description: 合同结束日期必须在开始日期之后
+applies_to:
+  - create-contract

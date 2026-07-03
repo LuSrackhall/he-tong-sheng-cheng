@@ -1,0 +1,47 @@
+id: create-user
+version: 1
+status: stable
+since: 1.3.0
+
+metadata:
+  tags: [admin, user]
+  owner: admin-team
+  priority: P1
+
+title: 创建用户
+goal: 创建一个新的系统用户（管理员/操作员）
+
+inputs:
+  - { name: username, domain: String, min: 3, max: 50 }
+  - { name: password, domain: String, min: 6 }
+  - { name: role, domain: String, enum: ["admin", "operator"] }
+
+outputs:
+  - { name: user, domain: User }
+
+preconditions:
+  - BR-006  # 用户名不为空
+  - BR-010  # 当前用户有管理权限
+
+effects:
+  sync:
+    creates:
+      - User
+    updates: []
+  async:
+    emits: []
+
+permissions:
+  - admin:user
+
+dependencies:
+  requires: []
+  triggers: []
+
+observability:
+  success:
+    - "User 记录存在"
+    - "用户名唯一"
+  failure:
+    - "用户名已存在"
+    - "权限不足"

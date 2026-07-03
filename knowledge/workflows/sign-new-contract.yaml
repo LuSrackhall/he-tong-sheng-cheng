@@ -1,0 +1,15 @@
+id: sign-new-contract
+title: 签新合同
+metadata:
+  tags: [contract, core]
+  priority: P0
+
+steps:
+  - if: asset.exists
+    then: search-or-create-asset
+    else: create-asset
+  - if: tenant.exists
+    then: search-or-create-tenant
+    else: create-tenant
+  - create-contract
+  - issue-receipt

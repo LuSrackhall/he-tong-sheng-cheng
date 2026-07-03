@@ -1,0 +1,7 @@
+id: BR-006
+title: 非空用户名
+severity: error
+description: 用户名不能为空
+applies_to:
+  - login
+  - create-user

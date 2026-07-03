@@ -1,0 +1,47 @@
+id: login
+version: 1
+status: stable
+since: 1.0.0
+
+metadata:
+  tags: [auth, user]
+  owner: auth-team
+  priority: P0
+
+title: 登录
+goal: 用户通过用户名密码登录系统，获取 JWT 令牌
+
+inputs:
+  - { name: username, domain: String, min: 1, max: 100 }
+  - { name: password, domain: String, min: 1 }
+
+outputs:
+  - { name: token, domain: String }
+  - { name: user, domain: User }
+
+preconditions:
+  - BR-006  # 用户名不为空
+  - BR-007  # 密码不为空
+
+effects:
+  sync:
+    creates: []
+    updates: []
+  async:
+    emits: []
+
+permissions:
+  - auth:login
+
+dependencies:
+  requires: []
+  triggers: []
+
+observability:
+  success:
+    - "登录成功，返回 JWT token"
+    - "User 信息可获取"
+  failure:
+    - "用户不存在"
+    - "密码错误"
+    - "登录被限流"

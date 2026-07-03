@@ -1,0 +1,7 @@
+id: BR-010
+title: 管理员权限要求
+severity: error
+description: 只有管理员角色的用户可以执行此操作
+applies_to:
+  - backup-database
+  - create-user

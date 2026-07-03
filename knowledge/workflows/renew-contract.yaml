@@ -1,0 +1,10 @@
+id: renew-contract
+title: 续签合同
+metadata:
+  tags: [contract, renewal]
+  priority: P1
+
+steps:
+  - ensure-contract-active
+  - create-contract
+  - issue-receipt

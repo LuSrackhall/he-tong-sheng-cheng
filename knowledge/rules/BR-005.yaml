@@ -1,0 +1,6 @@
+id: BR-005
+title: 超额支付限制
+severity: error
+description: 单笔收款不能超过合同应收总额
+applies_to:
+  - collect-rent

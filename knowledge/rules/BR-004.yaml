@@ -1,0 +1,6 @@
+id: BR-004
+title: 租期不可重叠
+severity: error
+description: 同一资产在同一时间段内不能有多个有效合同
+applies_to:
+  - create-contract

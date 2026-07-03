@@ -1,16 +1,16 @@
 ## 1. Capability DSL（首批定义）
 
-- [ ] 1.1 创建 `knowledge/` 顶层目录及 `capabilities/`、`workflows/`、`rules/` 子目录
-- [ ] 1.2 编写 `knowledge/capabilities/login.yaml`（认证登录）
-- [ ] 1.3 编写 `knowledge/capabilities/collect-rent.yaml`（收租金）
-- [ ] 1.4 编写 `knowledge/capabilities/create-contract.yaml`（创建合同）
-- [ ] 1.5 编写 `knowledge/capabilities/issue-receipt.yaml`（生成收据）
-- [ ] 1.6 编写 `knowledge/capabilities/backup-database.yaml`（数据库备份）
-- [ ] 1.7 编写 `knowledge/capabilities/create-user.yaml`（创建用户）
-- [ ] 1.8 编写 `knowledge/capabilities/ensure-contract-active.yaml`（依赖能力）
-- [ ] 1.9 编写 `knowledge/rules/` BR-001 ~ BR-010 业务规则
-- [ ] 1.10 编写 `knowledge/workflows/sign-new-contract.yaml`（签合同流程）
-- [ ] 1.11 编写 `knowledge/workflows/renew-contract.yaml`（续签流程）
+- [x] 1.1 创建 `knowledge/` 顶层目录及 `capabilities/`、`workflows/`、`rules/` 子目录
+- [x] 1.2 编写 `knowledge/capabilities/login.yaml`（认证登录）
+- [x] 1.3 编写 `knowledge/capabilities/collect-rent.yaml`（收租金）
+- [x] 1.4 编写 `knowledge/capabilities/create-contract.yaml`（创建合同）
+- [x] 1.5 编写 `knowledge/capabilities/issue-receipt.yaml`（生成收据）
+- [x] 1.6 编写 `knowledge/capabilities/backup-database.yaml`（数据库备份）
+- [x] 1.7 编写 `knowledge/capabilities/create-user.yaml`（创建用户）
+- [x] 1.8 编写 `knowledge/capabilities/ensure-contract-active.yaml`（依赖能力）
+- [x] 1.9 编写 `knowledge/rules/` BR-001 ~ BR-010 业务规则
+- [x] 1.10 编写 `knowledge/workflows/sign-new-contract.yaml`（签合同流程）
+- [x] 1.11 编写 `knowledge/workflows/renew-contract.yaml`（续签流程）
 
 ## 2. Knowledge Runtime（Go 实现）
 

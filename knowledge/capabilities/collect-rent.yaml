@@ -1,0 +1,57 @@
+id: collect-rent
+version: 1
+status: stable
+since: 1.3.0
+
+metadata:
+  tags: [rent, payment, receipt]
+  owner: payment-team
+  priority: P0
+
+title: 收租金
+goal: 录入一笔租金收款并生成收据
+
+inputs:
+  - { name: contract, domain: Contract }
+  - { name: amount, domain: Money, min: 0.01 }
+  - { name: date, domain: Date }
+  - { name: notes, domain: String, required: false }
+
+outputs:
+  - { name: payment, domain: Payment }
+  - { name: receipt, domain: Receipt }
+
+preconditions:
+  - BR-001  # 合同状态为 active 或 arrears
+  - BR-002  # 付款金额 > 0
+  - BR-003  # 当前收据本有可用编号
+
+effects:
+  sync:
+    creates:
+      - Payment
+      - Receipt
+    updates:
+      - Contract.TotalReceived
+  async:
+    emits:
+      - PaymentCreated
+
+permissions:
+  - rent:collect
+
+dependencies:
+  requires:
+    - ensure-contract-active
+  triggers:
+    - refresh-arrears
+    - update-dashboard
+
+observability:
+  success:
+    - "Payment 记录存在，金额匹配"
+    - "Receipt 已生成，编号有效"
+    - "Contract.TotalReceived 已增加"
+  failure:
+    - "BR-004 违反（超额支付）"
+    - "BR-003 违反（收据本耗尽）"
