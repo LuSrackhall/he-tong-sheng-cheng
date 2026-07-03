@@ -5,6 +5,6 @@ metadata:
   priority: P1
 
 steps:
-  - ensure-contract-active
-  - create-contract
-  - issue-receipt
+  - task: ensure-contract-active
+  - task: create-contract
+  - task: issue-receipt

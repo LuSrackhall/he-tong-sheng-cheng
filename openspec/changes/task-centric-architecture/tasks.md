@@ -37,19 +37,19 @@
 
 ## 4. CLI Adapter
 
-- [ ] 4.1 创建 `cli/kr/main.go` 入口（cobra 或标准 flag 解析）
-- [ ] 4.2 实现 `kr plan <capability>` 命令（预览 Execution Plan）
-- [ ] 4.3 实现 `kr plan <workflow>` 命令（预览多步骤 Plan）
-- [ ] 4.4 实现 `kr run <capability> --inputs...` 命令（生成 Plan → Guard → 调用后端 API）
-- [ ] 4.5 实现 `kr explain --trace <id>` 命令（读取并展示 Trace）
+- [x] 4.1 创建 `cli/kr/main.go` 入口（cobra 或标准 flag 解析）
+- [x] 4.2 实现 `kr plan <capability>` 命令（预览 Execution Plan）
+- [x] 4.3 实现 `kr plan <workflow>` 命令（预览多步骤 Plan）
+- [x] 4.4 实现 `kr run <capability> --inputs...` 命令（生成 Plan → Guard → 调用后端 API）
+- [x] 4.5 实现 `kr explain --trace <id>` 命令（读取并展示 Trace）
 
 ## 5. Execution Trace
 
-- [ ] 5.1 实现 Trace 数据结构（identity、context、steps、observability、determinism、summary）
-- [ ] 5.2 实现 Trace 文件写入器（`.traces/YYYY/MM/DD/trace_<plan_hash>.json`）
-- [ ] 5.3 实现 Trace 读取器（按 trace_id 读取）
-- [ ] 5.4 实现 CLI Adapter 的 Trace 写入集成（runde 后自动写入）
-- [ ] 5.5 实现 CLI Adapter 的 determinism score（CLI：0.99）
+- [x] 5.1 实现 Trace 数据结构（identity、context、steps、observability、determinism、summary）
+- [x] 5.2 实现 Trace 文件写入器（`.traces/YYYY/MM/DD/trace_<plan_hash>.json`）
+- [x] 5.3 实现 Trace 读取器（按 trace_id 读取）
+- [x] 5.4 实现 CLI Adapter 的 Trace 写入集成（runde 后自动写入）
+- [x] 5.5 实现 CLI Adapter 的 determinism score（CLI：0.99）
 
 ## 6. CI 基础验证（Phase 1 最小版本）
 

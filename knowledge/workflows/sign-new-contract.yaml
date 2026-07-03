@@ -5,11 +5,11 @@ metadata:
   priority: P0
 
 steps:
-  - if: asset.exists
+  - if: { condition: asset.exists }
     then: search-or-create-asset
     else: create-asset
-  - if: tenant.exists
+  - if: { condition: tenant.exists }
     then: search-or-create-tenant
     else: create-tenant
-  - create-contract
-  - issue-receipt
+  - task: create-contract
+  - task: issue-receipt

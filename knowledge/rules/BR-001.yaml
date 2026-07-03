@@ -5,5 +5,4 @@ description: 合同状态必须为 active 或 arrears 才能进行收款操作
 applies_to:
   - collect-rent
   - issue-receipt
-  - renew-contract
   - ensure-contract-active
