@@ -13,6 +13,7 @@ Pre-execution Guard 在 Execution Plan 发出之前验证 Constitution。
   - Plan 是否包含 UI selector 信息（§9 UI as Derived — 应无）
 - Guard 失败时返回 `ErrConstitutionViolation{axiom, detail}`，不写入 Trace
 - Guard 支持宽松模式（`--validate=false`），开发阶段可跳过
+- 宽松模式下：violations 仍被记录但执行不被阻断
 
 #### Scenario: 合法 Plan 通过 Guard
 - **WHEN** 合法 Plan 进入 Guard

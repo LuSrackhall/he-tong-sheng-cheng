@@ -337,7 +337,7 @@ runtime/                            # Knowledge Runtime 实现
     cache/                          # Capability/Rule/Plan 缓存
     snapshot/                       # Execution Plan 版本快照
 
-cli/                                # CLI Adapter
+cli/                                # CLI Adapter (实际在 runtime/cmd/kr/ 实现)
     main.go                         # kr run / kr plan / kr explain
 
 adapters/                           # Runtime Adapters
@@ -441,6 +441,7 @@ e2e/                                # Playwright 测试（Browser Adapter 产物
 - `runtime/cache/` — 内存缓存
 - `runtime/snapshot/` — Execution Plan 版本锁定
 - CLI: `kr run`, `kr plan`, `kr explain`
+- Phase 1 中 `runtime/internal/snapshot/` 预留但未接入执行管线
 - Trace 文件正确写入 `.traces/`
 
 **交付标准：** `kr run collect-rent --contract 1 --amount 500` 通过 CLI 成功

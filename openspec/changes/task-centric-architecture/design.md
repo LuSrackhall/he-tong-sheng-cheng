@@ -6,7 +6,7 @@ TCA（Task-Centric Architecture）已完成完整的系统架构设计（brainst
 
 - `knowledge/` — Capability DSL 首批定义
 - `runtime/` — Knowledge Runtime（Storage → Parser → Resolver → Planner → Query）
-- `cli/` — CLI Adapter（kr run / kr plan / kr explain）
+- `runtime/cmd/kr/` — CLI Adapter（kr run / kr plan / kr explain）
 - `system/constitution.md` — 宪法全局定义（已完成）
 
 Phase 2+（Browser Adapter、CI、Exploration、MCP）不在本 design 范围内。
@@ -68,13 +68,19 @@ Phase 1 定义 7 个 Capability：
 
 覆盖系统所有业务入口：认证、签合同、收款、催缴、管理操作。
 
-**D6: CLI 不实现完整 Plan 执行，只实现 Plan 到 API 调用映射**
+**D6: CLI 通过模拟执行完成端到端验证**
 
-CLI Adapter 的职责是验证 Knowledge Runtime 生成 Plan 的能力，以及在开发调试时可视化 Plan 和 Trace。Phase 1 不通过 CLI 实现完整的"执行 Execution Plan"——那是 Browser/MCP Adapter 的职责。CLI 通过调用现有 Go 后端 API 完成执行。
+CLI Adapter 的职责是验证 Knowledge Runtime 生成 Plan 的能力，以及在开发调试时可视化 Plan 和 Trace。Phase 1 的 `kr run` 执行 Plan 各步骤的模拟（不调用后端 API），主要验证 Plan → Guard → Trace 链路完整性。真正的后端 API 执行由 Browser/MCP Adapter 在后续 Phase 完成。
 
-**D7: Constitution Conflict Resolution 不实现，只留接口**
+**D7: Constitution Enforcement 分严格/宽松两模式**
 
-Phase 1 的 Pre-execution Guard 仅支持单 § 检查。多 § 冲突时按 §0 Precedence 处理（触发最高优先级 § 的 Guard）。Conflict Resolution Model 作为 Phase 3 的已知缺口记录在案。
+Phase 1 的 Pre-execution Guard 实现两种模式：
+- **严格模式**（默认，`--validate=true`）：Violations → 阻断执行
+- **宽松模式**（`--validate=false`）：Violations → 记录但不阻断
+
+guard.Check() 始终记录所有 violations。strictMode 仅控制 `result.Passed` 值。多 § 冲突时按 §0 Precedence 处理。Conflict Resolution Model 作为 Phase 3 的已知缺口记录在案。
+
+**注：** `runtime/internal/snapshot/` 模块已创建但尚未接入执行管线，将在 Phase 3 激活。
 
 ## 模块边界
 

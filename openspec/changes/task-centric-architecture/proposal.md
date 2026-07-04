@@ -36,7 +36,7 @@
 
 - **新增 `knowledge/` 顶层目录** — 与 `internal/`、`frontend/` 同级，不属于 Go 模块
 - **新增 `runtime/` 目录** — Knowledge Runtime 的 Go 实现
-- **新增 `cli/` 目录** — CLI Adapter 入口
+- **新增 `runtime/cmd/kr/` 目录** — CLI Adapter 入口（因 Go internal 包限制，位于 runtime/ 下）
 - **新增 `adapters/` 目录** — Browser / Exploration / MCP 适配器
 - **新增 `ci/` 目录** — CI 集成工具
 - **新增 `system/constitution.md`** — 全局不可变宪法

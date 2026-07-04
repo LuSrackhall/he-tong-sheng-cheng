@@ -52,8 +52,8 @@ func TestPlanCapabilityNotFound(t *testing.T) {
 
 func TestPlanWorkflow(t *testing.T) {
 	caps := []*model.Capability{
-		{ID: "step1", Dependencies: model.CapabilityDeps{Requires: []string{}}},
-		{ID: "step2", Dependencies: model.CapabilityDeps{Requires: []string{}}},
+		{ID: "step1", Title: "Step 1", Inputs: []model.CapabilityIO{{Name: "input1", Domain: "String"}}, Outputs: []model.CapabilityIO{{Name: "tmp", Domain: "String"}}, Dependencies: model.CapabilityDeps{Requires: []string{}}},
+		{ID: "step2", Title: "Step 2", Outputs: []model.CapabilityIO{{Name: "output1", Domain: "String"}}, Dependencies: model.CapabilityDeps{Requires: []string{}}},
 	}
 	wfs := []*model.Workflow{{
 		ID: "test-wf",
@@ -75,6 +75,18 @@ func TestPlanWorkflow(t *testing.T) {
 	}
 	if plan.PlanHash == "" {
 		t.Fatal("expected non-empty plan_hash")
+	}
+	if plan.Version != 1 {
+		t.Errorf("expected Version=1 for workflow, got %d", plan.Version)
+	}
+	if len(plan.InputSchema) == 0 {
+		t.Error("expected non-empty InputSchema (from first step)")
+	}
+	if plan.InputSchema[0].Name != "input1" {
+		t.Errorf("expected InputSchema[0].Name=input1, got %s", plan.InputSchema[0].Name)
+	}
+	if len(plan.OutputSchema) != 2 {
+		t.Errorf("expected 2 accumulated OutputSchema entries, got %d", len(plan.OutputSchema))
 	}
 }
 

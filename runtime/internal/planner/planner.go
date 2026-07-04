@@ -80,13 +80,21 @@ func (p *Planner) PlanWorkflow(workflowID string, profile model.ExecutionProfile
 	}
 
 	// 展开每一步
-	for _, stepID := range steps {
+	for i, stepID := range steps {
 		rc, err := p.resolver.ResolveCapability(stepID)
 		if err != nil {
 			return nil, fmt.Errorf("workflow %q step %q: %w", workflowID, stepID, err)
 		}
 
 		cap := rc.Capability
+
+		// 第一个 step 的 Inputs 作为 workflow 的 InputSchema
+		if i == 0 {
+			plan.InputSchema = cap.Inputs
+		}
+		// 累积所有 step 的 Outputs 作为 workflow 的 OutputSchema
+		plan.OutputSchema = append(plan.OutputSchema, cap.Outputs...)
+
 		plan.Steps = append(plan.Steps, model.PlanStep{
 			CapabilityID: cap.ID,
 			InputMapping: p.buildInputMapping(cap),
