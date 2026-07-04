@@ -80,7 +80,10 @@ func (g *ConstitutionGuard) Check(plan *model.ExecutionPlan) *GuardResult {
 	}
 
 	if len(result.Violations) > 0 {
-		result.Passed = false
+		if g.strictMode {
+			result.Passed = false
+		}
+		// 非严格模式：记录 violation 但不阻断
 	}
 
 	return result
@@ -90,7 +93,6 @@ func (g *ConstitutionGuard) Check(plan *model.ExecutionPlan) *GuardResult {
 func hasBusinessLogic(plan *model.ExecutionPlan) bool {
 	for _, step := range plan.Steps {
 		for key := range step.InputMapping {
-			// 检查 input mapping 值是否包含可执行的 pattern
 			if strings.HasPrefix(step.InputMapping[key], "exec:") {
 				return true
 			}
@@ -102,6 +104,9 @@ func hasBusinessLogic(plan *model.ExecutionPlan) bool {
 // hasUISelector 检查 Plan 是否包含 UI selector 信息
 func hasUISelector(plan *model.ExecutionPlan) bool {
 	for _, step := range plan.Steps {
+		if step.InputMapping == nil {
+			continue
+		}
 		for _, val := range step.InputMapping {
 			if strings.Contains(val, "#") || strings.Contains(val, ".") || strings.HasPrefix(val, "//") {
 				return true

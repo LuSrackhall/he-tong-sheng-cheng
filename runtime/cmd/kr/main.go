@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -19,12 +18,12 @@ import (
 	"asset-leasing-system/runtime/internal/trace"
 )
 
-var (
-	knowledgeDir = flag.String("knowledge-dir", "knowledge", "Path to knowledge/ directory")
-	apiBase      = flag.String("api-base", "http://localhost:8080", "Backend API base URL")
-	validate     = flag.Bool("validate", true, "Enable Pre-execution Constitution Guard")
-	tracesDir    = flag.String("traces-dir", ".traces", "Path to traces directory")
-)
+type RuntimeConfig struct {
+	KnowledgeDir string
+	APIBase      string
+	Validate     bool
+	TracesDir    string
+}
 
 type KnowledgeRuntime struct {
 	Loader   *loader.Loader
@@ -35,8 +34,8 @@ type KnowledgeRuntime struct {
 	Snapshot *snapshot.Snapshot
 }
 
-func initRuntime() (*KnowledgeRuntime, error) {
-	ld := loader.New(*knowledgeDir)
+func initRuntime(cfg *RuntimeConfig) (*KnowledgeRuntime, error) {
+	ld := loader.New(cfg.KnowledgeDir)
 
 	// 加载所有定义
 	caps, err := ld.LoadAllCapabilities()
@@ -97,7 +96,7 @@ func initRuntime() (*KnowledgeRuntime, error) {
 		knownCaps[c.ID] = true
 	}
 	grd := guard.New(knownCaps)
-	if !*validate {
+	if !cfg.Validate {
 		grd.SetStrictMode(false)
 		log.Println("Guard strict mode disabled (--validate=false)")
 	}
@@ -110,6 +109,49 @@ func initRuntime() (*KnowledgeRuntime, error) {
 		Cache:    cch,
 		Snapshot: snap,
 	}, nil
+}
+
+func parseGlobalFlags(args []string) (*RuntimeConfig, []string) {
+	cfg := &RuntimeConfig{
+		KnowledgeDir: "knowledge",
+		APIBase:      "http://localhost:8080",
+		Validate:     true,
+		TracesDir:    ".traces",
+	}
+
+	// 支持 --flag=value 和 --flag value 两种格式
+	remaining := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--help" || arg == "-h":
+			return cfg, []string{"--help"}
+		case arg == "--validate=false":
+			cfg.Validate = false
+		case arg == "--validate=true":
+			cfg.Validate = true
+		case strings.HasPrefix(arg, "--validate="):
+			// already handled above; skip
+		case strings.HasPrefix(arg, "--knowledge-dir="):
+			cfg.KnowledgeDir = strings.TrimPrefix(arg, "--knowledge-dir=")
+		case arg == "--knowledge-dir" && i+1 < len(args):
+			i++
+			cfg.KnowledgeDir = args[i]
+		case strings.HasPrefix(arg, "--traces-dir="):
+			cfg.TracesDir = strings.TrimPrefix(arg, "--traces-dir=")
+		case arg == "--traces-dir" && i+1 < len(args):
+			i++
+			cfg.TracesDir = args[i]
+		case strings.HasPrefix(arg, "--api-base="):
+			cfg.APIBase = strings.TrimPrefix(arg, "--api-base=")
+		case arg == "--api-base" && i+1 < len(args):
+			i++
+			cfg.APIBase = args[i]
+		default:
+			remaining = append(remaining, arg)
+		}
+	}
+	return cfg, remaining
 }
 
 func cmdPlan(rt *KnowledgeRuntime, args []string) error {
@@ -137,7 +179,7 @@ func cmdPlan(rt *KnowledgeRuntime, args []string) error {
 	return nil
 }
 
-func cmdRun(rt *KnowledgeRuntime, args []string) error {
+func cmdRun(rt *KnowledgeRuntime, args []string, cfg *RuntimeConfig) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: kr run <capability> [--inputs...]")
 	}
@@ -154,14 +196,14 @@ func cmdRun(rt *KnowledgeRuntime, args []string) error {
 
 	// Pre-execution Guard
 	result := rt.Guard.Check(plan)
-	if !result.Passed && *validate {
-		fmt.Println("Constitution Guard blocked execution:")
-		for _, v := range result.Violations {
-			fmt.Printf("  §%s: %s\n", v.Axiom, v.Detail)
+	if len(result.Violations) > 0 {
+		if cfg.Validate {
+			fmt.Println("Constitution Guard blocked execution:")
+			for _, v := range result.Violations {
+				fmt.Printf("  §%s: %s\n", v.Axiom, v.Detail)
+			}
+			return fmt.Errorf("execution blocked by Constitution Guard")
 		}
-		return fmt.Errorf("execution blocked by Constitution Guard")
-	}
-	if !result.Passed {
 		fmt.Println("Guard violations (skipped due to --validate=false):")
 		for _, v := range result.Violations {
 			fmt.Printf("  §%s: %s\n", v.Axiom, v.Detail)
@@ -218,9 +260,8 @@ func cmdRun(rt *KnowledgeRuntime, args []string) error {
 		StepCount:  len(tr.Steps),
 	}
 
-
 	// 写入 Trace
-	writer := trace.NewWriter(*tracesDir)
+	writer := trace.NewWriter(cfg.TracesDir)
 	path, err := writer.Write(tr)
 	if err != nil {
 		return fmt.Errorf("write trace: %w", err)
@@ -234,13 +275,15 @@ func cmdRun(rt *KnowledgeRuntime, args []string) error {
 	return nil
 }
 
-func cmdExplain(args []string) error {
+func cmdExplain(args []string, cfg *RuntimeConfig) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: kr explain <trace-id>")
 	}
 	traceID := args[0]
-		if traceID == "--trace" && len(args) > 1 { traceID = args[1] }
-	reader := trace.NewReader(*tracesDir)
+	if traceID == "--trace" && len(args) > 1 {
+		traceID = args[1]
+	}
+	reader := trace.NewReader(cfg.TracesDir)
 	exp := explain.New(reader)
 
 	output, err := exp.ByTraceID(traceID)
@@ -299,27 +342,31 @@ func convertInputMapping(mapping map[string]string, inputs map[string]string) ma
 }
 
 func main() {
-	flag.Parse()
+	// 解析全局 flags（支持放在子命令前后任意位置）
+	cfg, remaining := parseGlobalFlags(os.Args[1:])
 
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: kr <command> [args...]")
+	if len(remaining) < 1 || remaining[0] == "--help" {
+		fmt.Println("Usage: kr <command> [args...] [flags]")
 		fmt.Println()
 		fmt.Println("Commands:")
 		fmt.Println("  plan <capability|workflow>    Preview Execution Plan")
 		fmt.Println("  run <capability> [inputs...]   Execute a Capability")
-		fmt.Println("  explain <trace-id>           Explain a Trace")
+		fmt.Println("  explain <trace-id>             Explain a Trace")
 		fmt.Println()
 		fmt.Println("Flags:")
-		flag.PrintDefaults()
+		fmt.Println("  --knowledge-dir <path>   Knowledge layer path (default: knowledge)")
+		fmt.Println("  --api-base <url>         Backend API URL (default: http://localhost:8080)")
+		fmt.Println("  --validate=<bool>        Enable Constitution Guard (default: true)")
+		fmt.Println("  --traces-dir <path>      Trace storage path (default: .traces)")
 		os.Exit(0)
 	}
 
-	cmd := os.Args[1]
-	cmdArgs := os.Args[2:]
+	cmd := remaining[0]
+	cmdArgs := remaining[1:]
 
 	switch cmd {
 	case "plan":
-		rt, err := initRuntime()
+		rt, err := initRuntime(cfg)
 		if err != nil {
 			log.Fatalf("Runtime init failed: %v", err)
 		}
@@ -328,16 +375,16 @@ func main() {
 		}
 
 	case "run":
-		rt, err := initRuntime()
+		rt, err := initRuntime(cfg)
 		if err != nil {
 			log.Fatalf("Runtime init failed: %v", err)
 		}
-		if err := cmdRun(rt, cmdArgs); err != nil {
+		if err := cmdRun(rt, cmdArgs, cfg); err != nil {
 			log.Fatalf("Run failed: %v", err)
 		}
 
 	case "explain":
-		if err := cmdExplain(cmdArgs); err != nil {
+		if err := cmdExplain(cmdArgs, cfg); err != nil {
 			log.Fatalf("Explain failed: %v", err)
 		}
 

@@ -74,6 +74,7 @@ func (p *Planner) PlanWorkflow(workflowID string, profile model.ExecutionProfile
 
 	plan := &model.ExecutionPlan{
 		CapabilityID: workflowID,
+		Version:      1,
 		Profile:      string(profile),
 		CreatedAt:    time.Now(),
 	}

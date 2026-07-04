@@ -127,8 +127,11 @@ func TestGuardLooseMode(t *testing.T) {
 	}
 
 	result := g.Check(plan)
-	if result.Passed {
-		t.Fatal("loose mode bypasses guard? it should still check but we test different behavior")
+	if result.Passed != true {
+		t.Fatal("loose mode should not block execution (Passed=true)")
+	}
+	if len(result.Violations) == 0 {
+		t.Fatal("loose mode should still record violations")
 	}
 }
 
