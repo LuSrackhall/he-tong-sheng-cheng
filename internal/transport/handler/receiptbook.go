@@ -51,7 +51,7 @@ func (h *ReceiptBookHandler) Create(c *gin.Context) {
 		req.StartNum = 1
 	}
 	if req.TotalPages <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "TotalPages must be greater than 0"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "总页数必须大于 0"})
 		return
 	}
 

@@ -108,7 +108,7 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 	// 角色白名单校验
 	validRoles := map[string]bool{"admin": true, "operator": true}
 	if !validRoles[req.Role] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Role must be 'admin' or 'operator'"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "角色必须是 admin 或 operator"})
 		return
 	}
 
