@@ -1,0 +1,42 @@
+id: ensure-contract-active
+version: 1
+status: stable
+since: 1.3.0
+
+metadata:
+  tags: [contract, support]
+  owner: contract-team
+  priority: P0
+
+title: 验证合同可操作
+goal: 检查合同状态是否为 active 或 arrears，确保可进行收款等操作
+
+inputs:
+  - { name: contract, domain: Contract }
+
+outputs:
+  - { name: contract, domain: Contract }
+  - { name: is_active, domain: Boolean }
+
+preconditions:
+  - BR-001  # 合同状态为 active 或 arrears
+
+effects:
+  sync:
+    creates: []
+    updates: []
+  async:
+    emits: []
+
+permissions: []
+
+dependencies:
+  requires: []
+  triggers: []
+
+observability:
+  success:
+    - "合同状态为 active 或 arrears"
+    - "可继续进行后续操作"
+  failure:
+    - "合同已到期或已缴全"

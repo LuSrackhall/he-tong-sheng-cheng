@@ -1,0 +1,6 @@
+id: BR-007
+title: 非空密码
+severity: error
+description: 密码不能为空
+applies_to:
+  - login

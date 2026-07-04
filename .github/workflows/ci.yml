@@ -76,3 +76,29 @@ jobs:
       - run: go build ./...
         env:
           CGO_ENABLED: "1"
+
+  knowledge-runtime-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - run: go test ./runtime/... -count=1
+        env:
+          CGO_ENABLED: "1"
+      - run: go build -o /dev/null ./runtime/cmd/kr/
+        env:
+          CGO_ENABLED: "1"
+      - name: Validate all capabilities
+        run: |
+          go run ./runtime/cmd/kr/ plan login
+          go run ./runtime/cmd/kr/ plan collect-rent
+          go run ./runtime/cmd/kr/ plan create-contract
+          go run ./runtime/cmd/kr/ plan issue-receipt
+          go run ./runtime/cmd/kr/ plan backup-database
+          go run ./runtime/cmd/kr/ plan create-user
+          go run ./runtime/cmd/kr/ plan sign-new-contract
+          go run ./runtime/cmd/kr/ plan renew-contract
+        env:
+          CGO_ENABLED: "1"

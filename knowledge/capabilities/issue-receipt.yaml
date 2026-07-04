@@ -1,0 +1,48 @@
+id: issue-receipt
+version: 1
+status: stable
+since: 1.3.0
+
+metadata:
+  tags: [receipt, payment]
+  owner: payment-team
+  priority: P1
+
+title: 生成收据
+goal: 为已创建的 Payment 生成关联收据
+
+inputs:
+  - { name: payment, domain: Payment }
+  - { name: receipt_book, domain: ReceiptBook }
+
+outputs:
+  - { name: receipt, domain: Receipt }
+
+preconditions:
+  - BR-003  # 收据本有可用编号
+  - BR-009  # Payment 存在且未被作废
+
+effects:
+  sync:
+    creates:
+      - Receipt
+    updates:
+      - ReceiptBook (increment sequence)
+  async:
+    emits: []
+
+permissions:
+  - receipt:issue
+
+dependencies:
+  requires:
+    - collect-rent
+  triggers: []
+
+observability:
+  success:
+    - "Receipt 已生成，编号有效"
+    - "Receipt 关联到正确 Payment"
+  failure:
+    - "收据本耗尽"
+    - "Payment 已作废"
