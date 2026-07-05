@@ -1,0 +1,58 @@
+# Feedback 收集器和报告格式
+
+## 统一反馈 Schema
+
+所有 Adapter（Browser、Exploration、CLI、MCP）使用统一的反馈格式。
+
+```yaml
+feedback:
+  adapter: string          # browser | exploration | cli | mcp
+  type: string             # ui | capability | workflow | rule | security | performance
+  severity: string         # critical | high | medium | low | info
+  capability: string       # capability id
+  scenario: string         # scenario name
+  trace_id: string         # 关联的 Trace ID
+  title: string            # 简短标题
+  description: string      # 详细描述
+  recommendation: string   # 建议修复方案
+  screenshots: []string    # 关联截图路径（仅 Browser/Exploration）
+  steps_to_reproduce: []string  # 复现步骤
+```
+
+## UX Score 计算
+
+```
+UX Score = (ease_of_navigation × 0.3)
+         + (error_message_clarity × 0.2)
+         + (task_completion_rate × 0.3)
+         + (time_efficiency × 0.2)
+
+其中:
+- ease_of_navigation: 用户在多少步内完成任务（参照 baseline）
+- error_message_clarity: 错误消息是否可理解
+- task_completion_rate: 成功完成的百分比
+- time_efficiency: 实际耗时/预期耗时
+```
+
+## 反馈聚合 Dashboard
+
+```sql
+-- 反馈趋势分析
+SELECT
+  type,
+  severity,
+  COUNT(*) as count,
+  DATE(timestamp) as day
+FROM feedback
+GROUP BY type, severity, day
+ORDER BY day DESC;
+
+-- 高频失败 Capability
+SELECT
+  capability,
+  COUNT(*) as failure_count
+FROM feedback
+WHERE severity IN ('critical', 'high')
+GROUP BY capability
+ORDER BY failure_count DESC;
+```
