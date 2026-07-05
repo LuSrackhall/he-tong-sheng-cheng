@@ -100,5 +100,35 @@ jobs:
           go run ./runtime/cmd/kr/ plan create-user
           go run ./runtime/cmd/kr/ plan sign-new-contract
           go run ./runtime/cmd/kr/ plan renew-contract
+
+  e2e-playwright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: cd frontend && npm ci
+      - name: Install Playwright
+        run: cd frontend && npx playwright install chromium
+      - name: Build frontend
+        run: cd frontend && npx vite build
+      - name: Copy dist to server
+        run: mkdir -p cmd/server/dist && cp -r frontend/dist/* cmd/server/dist/
+      - name: Run Playwright E2E tests
+        run: cd frontend && npx playwright test --config=e2e/playwright.config.ts
+        env:
+          JWT_SECRET: dev-secret
+          ADMIN_PASSWORD: admin123
+          CGO_ENABLED: "1"
+      - name: Run integration tests
+        run: bash tests/runtime_integration.sh
+        env:
+          CGO_ENABLED: "1"
         env:
           CGO_ENABLED: "1"

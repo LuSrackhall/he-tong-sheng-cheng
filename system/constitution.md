@@ -92,5 +92,6 @@ Only the Knowledge Layer may evolve system behavior. Runtime, Adapters, Traces, 
 |------|------|----------|
 | v1.0 | 2026-07-04 | 初始 12 条公理（Authority / Boundary / Truth / Evolution） |
 | v1.1 | 2026-07-04 | 新增 §0 Precedence of Truth Sources |
+| v1.2 | 2026-07-05 | Phase 2 扩展：§5 Adapter Purity、§7 Trace Irreversibility、§10 Determinism Gradient 加入 Runtime Guard。§6、§8、§11、§12 仍为 deferred。新增 Playwright E2E 测试套件。 |
 
 **修改规则：** Constitution 只能 append，不能修改旧条。版本升级时新旧版本并存。Runtime 始终只绑定一个 active version。
