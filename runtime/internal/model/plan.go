@@ -4,11 +4,13 @@ import "time"
 
 // ExecutionPlan 是 Knowledge Runtime 和 Adapter 之间的唯一契约
 type ExecutionPlan struct {
-	CapabilityID  string              `json:"capabilityId"`
-	Version       int                 `json:"version"`
-	PlanHash      string              `json:"planHash"`
-	Profile       string              `json:"executionProfile"` // strict | exploratory | production | debug
-	UIMappingVer  string              `json:"uiMappingVersion,omitempty"`
+	CapabilityID    string              `json:"capabilityId"`
+	Version         int                 `json:"version"`
+	PlanHash        string              `json:"planHash"`
+	Profile         string              `json:"executionProfile"`
+	Adapter         string              `json:"adapter,omitempty"`
+	DeterminismScore float64            `json:"determinismScore,omitempty"`
+	UIMappingVer    string              `json:"uiMappingVersion,omitempty"`
 
 	Steps        []PlanStep           `json:"steps"`
 	InputSchema  []CapabilityIO       `json:"inputSchema"`

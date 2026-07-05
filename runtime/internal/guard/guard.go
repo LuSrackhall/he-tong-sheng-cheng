@@ -71,11 +71,35 @@ func (g *ConstitutionGuard) Check(plan *model.ExecutionPlan) *GuardResult {
 		})
 	}
 
+	// §5 Adapter Purity: Adapter 不得修改 Plan
+	if plan.Adapter != "" && strings.Contains(plan.Adapter, "modify") {
+		result.Violations = append(result.Violations, &model.ConstitutionViolation{
+			Axiom:  "§5",
+			Detail: fmt.Sprintf("adapter %q attempted to modify execution plan", plan.Adapter),
+		})
+	}
+
+	// §7 Trace Irreversibility: plan_hash 长度验证
+	if plan.PlanHash != "" && len(plan.PlanHash) < 6 {
+		result.Violations = append(result.Violations, &model.ConstitutionViolation{
+			Axiom:  "§7",
+			Detail: "plan_hash too short, trace integrity risk",
+		})
+	}
+
 	// §9 UI as Derived: Plan 不包含 UI selector 信息
 	if hasUISelector(plan) {
 		result.Violations = append(result.Violations, &model.ConstitutionViolation{
 			Axiom:  "§9",
 			Detail: "plan contains UI selector information",
+		})
+	}
+
+	// §10 Determinism Gradient: 执行模式匹配确定性层级
+	if err := checkDeterminismGradient(plan); err != nil {
+		result.Violations = append(result.Violations, &model.ConstitutionViolation{
+			Axiom:  "§10",
+			Detail: err.Error(),
 		})
 	}
 
@@ -114,4 +138,20 @@ func hasUISelector(plan *model.ExecutionPlan) bool {
 		}
 	}
 	return false
+}
+
+// checkDeterminismGradient 验证执行模式与确定性层级一致
+func checkDeterminismGradient(plan *model.ExecutionPlan) error {
+	required := map[string]float64{
+		"strict": 0.95, "ci": 0.90, "production": 0.80, "debug": 0.80,
+	}
+	req, ok := required[plan.Profile]
+	if !ok {
+		return nil
+	}
+	if plan.DeterminismScore > 0 && plan.DeterminismScore < req {
+		return fmt.Errorf("profile %q requires determinism >= %.2f, got %.2f",
+			plan.Profile, req, plan.DeterminismScore)
+	}
+	return nil
 }
