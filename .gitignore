@@ -29,3 +29,10 @@ tmp/
 # Node (root-level guard)
 node_modules/
 .worktrees/
+
+# TCA & generated artifacts
+.traces/
+mcp
+kr
+frontend/test-results/
+.claude/worktrees/
