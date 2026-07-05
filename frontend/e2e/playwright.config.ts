@@ -11,10 +11,4 @@ export default defineConfig({
       'Content-Type': 'application/json',
     },
   },
-  webServer: {
-    command: 'JWT_SECRET=dev-secret ADMIN_PASSWORD=admin123 go run ../cmd/server',
-    port: 8080,
-    reuseExistingServer: true,
-    cwd: '..',
-  },
 });
