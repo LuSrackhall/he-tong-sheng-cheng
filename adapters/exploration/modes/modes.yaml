@@ -1,0 +1,89 @@
+# 探索执行器模式定义
+
+## UX Audit Mode
+
+UX Audit 模式模拟真实用户操作，评估系统可发现性和易用性。
+
+```yaml
+mode: ux-audit
+budget:
+  max_steps: 200
+  max_time_ms: 300000
+  max_capabilities: 10
+output:
+  - ux_score: 0-100
+  - confusion_points: []
+  - unlabeled_actions: []
+  - improvement_suggestions: []
+```
+
+运行方式：
+```bash
+# 随机选择一个 Persona 执行 UX Audit
+KR_KNOWLEDGE_DIR=knowledge go run .worktrees/change/task-centric-architecture/runtime/cmd/kr run explore --mode ux
+
+# 指定 Persona
+KR_PERSONA=village-worker go run .worktrees/change/task-centric-architecture/runtime/cmd/kr run explore --mode ux
+```
+
+## Chaos Mode
+
+Chaos 模式测试系统在异常操作下的健壮性。
+
+```yaml
+mode: chaos
+budget:
+  max_steps: 50
+  max_time_ms: 120000
+scenarios:
+  - 重复提交表单
+  - 提交空数据
+  - 快速连续点击
+  - 使用无效 Token
+  - 修改 URL 参数
+  - 并发创建操作
+output:
+  - robustness_score: 0-100
+  - crash_count: int
+  - error_handling_quality: good/medium/poor
+```
+
+## Regression Mode
+
+Regression 模式验证核心业务流程是否正常。
+
+```yaml
+mode: regression
+budget:
+  max_steps: 100
+  max_time_ms: 180000
+capabilities:
+  - login
+  - create-contract
+  - collect-rent
+  - arrears-check
+  - dashboard-stats
+output:
+  - capabilities_tested: []
+  - passed: int
+  - failed: int
+```
+
+## Accessibility Mode
+
+Accessibility 模式检查键盘导航和基本无障碍特性。
+
+```yaml
+mode: accessibility
+budget:
+  max_steps: 100
+  max_time_ms: 180000
+checks:
+  - keyboard_navigation
+  - form_label_availability
+  - error_message_clarity
+  - color_contrast
+output:
+  - accessibility_score: 0-100
+  - issues: []
+```
