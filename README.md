@@ -7,6 +7,9 @@
 - **后端:** Go + Gin + GORM
 - **前端:** Vue 3 (Composition API) + TypeScript + Pinia + Vue Router
 - **数据库:** SQLite（本地单文件）/ PostgreSQL（服务器）
+- **TCA:** Knowledge Runtime + Capability DSL + Constitution Guard
+- **E2E:** Playwright 自动化测试
+- **Agent 接口:** MCP Server
 - **构建:** Vite -> `go:embed` 单一二进制部署
 
 ## 快速启动
@@ -130,4 +133,97 @@ make test
 # API 集成测试（需要先启动服务）
 JWT_SECRET=test ADMIN_PASSWORD=admin123 go run ./cmd/server &
 bash tests/e2e.sh
+```
+---
+## TCA（Task-Centric Architecture）
+
+系统从 Phase 1 引入了 TCA——以业务能力为中心的质量与运行时体系。核心目录:
+- `runtime/` — Knowledge Runtime（加载/解析/规划/验证）
+- `knowledge/` — 业务能力 DSL（Capabilities / Rules / Workflows）
+- `system/constitution.md` — 13 条不可违反系统公理
+- `adapters/` — 运行时适配器（MCP Server / Exploration）
+
+### kr CLI 快速入门
+
+```bash
+# 编译 CLI
+go build -o kr ./runtime/cmd/kr/
+
+# 预览业务能力执行计划
+./kr plan collect-rent
+
+# 预览复合流程
+./kr plan sign-new-contract
+
+# 执行能力（生成 Trace）
+./kr run collect-rent --validate=false
+
+# 回溯查看执行轨迹
+./kr explain <trace-id>
+```
+
+**已定义的业务能力：** login / collect-rent / create-contract / issue-receipt / backup-database / create-user / ensure-contract-active
+
+### MCP Server（Agent 接口）
+
+```bash
+# 启动（后端需在 :8080 运行）
+go run ./adapters/mcp/server.go
+
+# 查看可用工具（6个）
+curl -X POST http://localhost:9090/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/list","id":1}'
+
+# 调用 Dashboard 统计
+curl -X POST http://localhost:9090/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/call","id":2,"params":{"name":"get_dashboard","arguments":{}}}'
+```
+
+### Playwright E2E
+
+```bash
+# 先启动服务
+JWT_SECRET=dev-secret ADMIN_PASSWORD=admin123 go run ./cmd/server &
+
+# 运行 E2E 测试（26 个场景）
+cd frontend && npx playwright test --config=e2e/playwright.config.ts
+```
+
+## 项目结构
+
+```
+cmd/server/main.go          # 入口 + 路由
+internal/                    # 传统后端分层
+  config/ di/ domain/ calc/
+  repository/ transport/
+runtime/                     # TCA Knowledge Runtime
+  cmd/kr/                    # CLI 入口
+  internal/                  # model/loader/resolver/planner/guard/trace
+knowledge/                   # 业务知识层
+  capabilities/workflows/rules/
+adapters/                    # TCA Runtime Adapters
+  mcp/ exploration/
+frontend/                    # Vue 3
+  src/views/ e2e/            # 12 页面 + Playwright 测试
+system/                      # 系统宪法
+tests/                       # 集成测试
+```
+
+## 测试速查
+
+```bash
+# Go 全量测试
+go test ./... -count=1
+
+# TCA 测试
+go test ./runtime/... -count=1
+bash tests/runtime_integration.sh
+
+# E2E 测试（需先启动服务）
+cd frontend && npx playwright test --config=e2e/playwright.config.ts
+
+# 静态分析
+go vet ./...
 ```
