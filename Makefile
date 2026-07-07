@@ -1,4 +1,4 @@
-.PHONY: build build-frontend build-backend run clean test test-cover dev-frontend dev lint typecheck docker-build docker-up docker-down
+.PHONY: build build-frontend build-backend run clean test test-cover dev-frontend dev lint typecheck docker-build docker-up docker-down kr kr-plan kr-test kr-integration mcp test-e2e test-all
 
 # ---- 构建 ----
 build: build-frontend build-backend
@@ -58,6 +58,43 @@ migrate:
 
 # ---- 清理 ----
 clean:
-	rm -f server
+	rm -f server kr mcp-server
 	rm -rf cmd/server/dist
 	rm -f coverage.out coverage.html
+
+# ---- TCA Knowledge Runtime ----
+kr:
+	@echo "==> 编译 kr CLI..."
+	go build -o kr ./runtime/cmd/kr/
+
+kr-plan: kr
+	@echo "==> 验证所有 Capability..."
+	./kr plan login
+	./kr plan collect-rent
+	./kr plan create-contract
+	./kr plan issue-receipt
+	./kr plan backup-database
+	./kr plan create-user
+	./kr plan sign-new-contract
+	./kr plan renew-contract
+
+kr-test:
+	@echo "==> TCA Runtime 测试..."
+	go test ./runtime/... -count=1
+
+kr-integration: kr
+	@echo "==> TCA 集成测试..."
+	bash tests/runtime_integration.sh
+
+# ---- MCP Server ----
+mcp:
+	@echo "==> 编译 MCP Server..."
+	go build -o mcp-server ./adapters/mcp/
+
+# ---- E2E 测试 ----
+test-e2e:
+	@echo "==> 运行 Playwright E2E 测试..."
+	cd frontend && npx playwright test --config=e2e/playwright.config.ts
+
+# ---- 全量测试 ----
+test-all: test kr-test kr-integration test-e2e
